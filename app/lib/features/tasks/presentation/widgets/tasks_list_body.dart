@@ -6,7 +6,7 @@ import 'package:todo_app/features/tasks/presentation/widgets/task_tile.dart';
 import 'package:todo_app/shared/widgets/app_pull_to_refresh.dart';
 import 'package:todo_app/shared/widgets/fade_slide_in.dart';
 
-/// 单分组任务列表：进行中在上，底部固定「已完成」
+/// 单分组任务列表：进行中在上，「已完成」在列表底部
 class TasksListBody extends StatelessWidget {
   const TasksListBody({
     super.key,

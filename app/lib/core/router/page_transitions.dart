@@ -1,5 +1,23 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+enum PageTransitionKind { fade, slide }
+
+/// Web 刷新时用 MaterialPage，避免 CustomTransition 初始透明度为 0 导致白屏
+Page<T> appPage<T>({
+  required LocalKey key,
+  required Widget child,
+  PageTransitionKind kind = PageTransitionKind.fade,
+}) {
+  if (kIsWeb) {
+    return MaterialPage<T>(key: key, child: child);
+  }
+  return switch (kind) {
+    PageTransitionKind.slide => slidePage<T>(key: key, child: child),
+    PageTransitionKind.fade => fadePage<T>(key: key, child: child),
+  };
+}
 
 /// 从右侧滑入的页面过渡（二级页面）
 CustomTransitionPage<T> slidePage<T>({

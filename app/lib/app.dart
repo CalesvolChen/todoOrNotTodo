@@ -17,24 +17,15 @@ class TodoApp extends ConsumerWidget {
       }
     });
 
-    final auth = ref.watch(authControllerProvider);
-
-    // 启动阶段：不创建 GoRouter，用普通 MaterialApp 保证一定有 UI（Web 刷新白屏的根因之一）
-    if (auth.initializing) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        home: const SplashScreen(),
-      );
-    }
-
     final router = ref.watch(routerProvider);
+
     return MaterialApp.router(
       title: 'Todo',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       routerConfig: router,
+      builder: (context, child) => child ?? const SplashScreen(),
     );
   }
 }

@@ -5,10 +5,22 @@ import 'app.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // 捕获未处理异常，便于 Web 白屏时在控制台看到原因
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     debugPrint('FlutterError: ${details.exceptionAsString()}');
+  };
+  ErrorWidget.builder = (details) {
+    return Material(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            '页面加载出错\n${details.exceptionAsString()}',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
   };
   runApp(const ProviderScope(child: TodoApp()));
 }

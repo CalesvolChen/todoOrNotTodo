@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,18 +34,37 @@ class SplashScreen extends StatelessWidget {
   }
 }
 
-/// 仅在鉴权恢复完成后才创建（见 app.dart）
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
   ref.listen(authControllerProvider, (_, __) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
-    initialLocation: '/login',
     refreshListenable: refresh,
+    debugLogDiagnostics: kDebugMode,
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            '页面无法打开\n${state.error}',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    ),
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
       final loc = state.matchedLocation;
+
+      if (auth.initializing) {
+        return loc == '/splash' ? null : '/splash';
+      }
+
+      if (loc == '/splash') {
+        return auth.isAuthenticated ? '/' : '/login';
+      }
+
       final isAuth = auth.isAuthenticated;
       final onAuthPage = loc == '/login' || loc == '/register';
 
@@ -58,41 +78,57 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
+        path: '/splash',
+        pageBuilder: (context, state) =>
+            appPage(key: state.pageKey, child: const SplashScreen()),
+      ),
+      GoRoute(
         path: '/',
         pageBuilder: (context, state) =>
-            fadePage(key: state.pageKey, child: const HomeScreen()),
+            appPage(key: state.pageKey, child: const HomeScreen()),
       ),
       GoRoute(
         path: '/login',
         pageBuilder: (context, state) =>
-            fadePage(key: state.pageKey, child: const LoginScreen()),
+            appPage(key: state.pageKey, child: const LoginScreen()),
       ),
       GoRoute(
         path: '/register',
-        pageBuilder: (context, state) =>
-            slidePage(key: state.pageKey, child: const RegisterScreen()),
+        pageBuilder: (context, state) => appPage(
+          key: state.pageKey,
+          kind: PageTransitionKind.slide,
+          child: const RegisterScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings',
-        pageBuilder: (context, state) =>
-            slidePage(key: state.pageKey, child: const SettingsScreen()),
+        pageBuilder: (context, state) => appPage(
+          key: state.pageKey,
+          kind: PageTransitionKind.slide,
+          child: const SettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/invitations',
-        pageBuilder: (context, state) =>
-            slidePage(key: state.pageKey, child: const InvitationsScreen()),
+        pageBuilder: (context, state) => appPage(
+          key: state.pageKey,
+          kind: PageTransitionKind.slide,
+          child: const InvitationsScreen(),
+        ),
       ),
       GoRoute(
         path: '/task/:id',
-        pageBuilder: (context, state) => slidePage(
+        pageBuilder: (context, state) => appPage(
           key: state.pageKey,
+          kind: PageTransitionKind.slide,
           child: TaskDetailScreen(taskId: state.pathParameters['id']!),
         ),
       ),
       GoRoute(
         path: '/list/:id/members',
-        pageBuilder: (context, state) => slidePage(
+        pageBuilder: (context, state) => appPage(
           key: state.pageKey,
+          kind: PageTransitionKind.slide,
           child: MembersScreen(listId: state.pathParameters['id']!),
         ),
       ),

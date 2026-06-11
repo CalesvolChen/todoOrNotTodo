@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:todo_app/features/tasks/data/models/task.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/task_tile.dart';
 
-/// 列表底部固定的「已完成」分组
+/// 列表底部的「已完成」分组（随列表滚动，默认收起）
 class CompletedTasksSection extends StatefulWidget {
   const CompletedTasksSection({
     super.key,
     required this.tasks,
     required this.onTaskTap,
-    this.padding = const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    this.padding = const EdgeInsets.fromLTRB(0, 16, 0, 0),
   });
 
   final List<Task> tasks;
@@ -21,7 +21,7 @@ class CompletedTasksSection extends StatefulWidget {
 }
 
 class _CompletedTasksSectionState extends State<CompletedTasksSection> {
-  bool _expanded = true;
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +39,8 @@ class _CompletedTasksSectionState extends State<CompletedTasksSection> {
             InkWell(
               onTap: () => setState(() => _expanded = !_expanded),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
                     AnimatedRotation(

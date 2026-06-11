@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -51,27 +53,41 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> _restore() async {
     _ref.read(authBootstrappingProvider.notifier).state = true;
     try {
-      final token = await _ref.read(tokenStorageProvider).read();
+      final token = await _ref
+          .read(tokenStorageProvider)
+          .read()
+          .timeout(const Duration(seconds: 5));
       if (token == null || token.isEmpty) {
         state = const AuthState(initializing: false);
         return;
       }
-      // 超时保护，避免后端不可达时一直卡在 splash
-      final me = await _ref
-          .read(authRepositoryProvider)
-          .fetchMe()
-          .timeout(const Duration(seconds: 8));
-      state = AuthState(token: token, user: me, initializing: false);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        await _ref.read(tokenStorageProvider).clear();
+      try {
+        final me = await _ref
+            .read(authRepositoryProvider)
+            .fetchMe()
+            .timeout(const Duration(seconds: 8));
+        state = AuthState(token: token, user: me, initializing: false);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 401) {
+          await _ref.read(tokenStorageProvider).clear();
+          state = const AuthState(initializing: false);
+        } else {
+          state = AuthState(token: token, initializing: false);
+        }
+      } on TimeoutException {
+        state = AuthState(token: token, initializing: false);
+      } catch (_) {
+        state = AuthState(token: token, initializing: false);
       }
+    } on TimeoutException {
       state = const AuthState(initializing: false);
     } catch (_) {
-      await _ref.read(tokenStorageProvider).clear();
       state = const AuthState(initializing: false);
     } finally {
       _ref.read(authBootstrappingProvider.notifier).state = false;
+      if (state.initializing) {
+        state = state.copyWith(initializing: false);
+      }
     }
   }
 
