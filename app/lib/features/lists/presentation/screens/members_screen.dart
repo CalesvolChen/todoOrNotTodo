@@ -5,6 +5,10 @@ import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/features/lists/data/list_repository.dart';
 import 'package:todo_app/features/lists/data/models/group_member.dart';
 import 'package:todo_app/features/lists/presentation/view_models/lists_controller.dart';
+import 'package:todo_app/shared/widgets/animated_fab.dart';
+import 'package:todo_app/shared/widgets/app_back_button.dart';
+import 'package:todo_app/shared/widgets/app_snackbar.dart';
+import 'package:todo_app/shared/widgets/fade_slide_in.dart';
 
 class MembersScreen extends ConsumerWidget {
   const MembersScreen({super.key, required this.listId});
@@ -17,7 +21,6 @@ class MembersScreen extends ConsumerWidget {
   }
 
   Future<void> _invite(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
     final controller = TextEditingController();
     final username = await showDialog<String>(
       context: context,
@@ -43,9 +46,9 @@ class MembersScreen extends ConsumerWidget {
     if (username == null || username.isEmpty) return;
     try {
       await ref.read(listRepositoryProvider).invite(listId, username);
-      messenger.showSnackBar(const SnackBar(content: Text('邀请已发送')));
+      context.showAppSnackBar('邀请已发送', type: AppSnackBarType.success);
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('邀请失败，请检查昵称')));
+      context.showAppSnackBar('邀请失败，请检查昵称', type: AppSnackBarType.error);
     }
   }
 
@@ -54,12 +57,11 @@ class MembersScreen extends ConsumerWidget {
     WidgetRef ref,
     GroupMember member,
   ) async {
-    final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(listRepositoryProvider).removeMember(listId, member.id);
       _refresh(ref);
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('移除失败')));
+      context.showAppSnackBar('移除失败', type: AppSnackBarType.error);
     }
   }
 
@@ -68,8 +70,8 @@ class MembersScreen extends ConsumerWidget {
     final membersAsync = ref.watch(listMembersProvider(listId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('分组成员')),
-      floatingActionButton: FloatingActionButton.extended(
+      appBar: secondaryAppBar(context, title: '分组成员'),
+      floatingActionButton: AnimatedFab.extended(
         onPressed: () => _invite(context, ref),
         icon: const Icon(Icons.person_add_alt),
         label: const Text('邀请'),
@@ -79,7 +81,10 @@ class MembersScreen extends ConsumerWidget {
           onRefresh: () async => _refresh(ref),
           child: ListView(
             children: [
-              _MemberTile(member: data.owner, isOwner: true),
+              FadeSlideIn(
+                index: 0,
+                child: _MemberTile(member: data.owner, isOwner: true),
+              ),
               const Divider(height: 1),
               if (data.members.isEmpty)
                 const Padding(
@@ -89,11 +94,14 @@ class MembersScreen extends ConsumerWidget {
                   ),
                 )
               else
-                ...data.members.map(
-                  (m) => _MemberTile(
-                    member: m,
-                    isOwner: false,
-                    onRemove: () => _remove(context, ref, m),
+                ...data.members.asMap().entries.map(
+                  (entry) => FadeSlideIn(
+                    index: entry.key + 1,
+                    child: _MemberTile(
+                      member: entry.value,
+                      isOwner: false,
+                      onRemove: () => _remove(context, ref, entry.value),
+                    ),
                   ),
                 ),
             ],

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
+import 'package:todo_app/shared/widgets/app_back_button.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -30,7 +31,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('注册')),
+      appBar: secondaryAppBar(context, title: '注册', fallbackLocation: '/login'),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

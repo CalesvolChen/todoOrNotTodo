@@ -9,6 +9,7 @@ import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/features/tasks/data/models/attachment.dart';
 import 'package:todo_app/features/tasks/data/models/task.dart';
 import 'package:todo_app/features/tasks/data/task_repository.dart';
+import 'package:todo_app/shared/widgets/app_snackbar.dart';
 
 class AudioSection extends ConsumerStatefulWidget {
   const AudioSection({super.key, required this.task, required this.onChanged});
@@ -46,7 +47,6 @@ class _AudioSectionState extends ConsumerState<AudioSection> {
   TaskRepository get _repo => ref.read(taskRepositoryProvider);
 
   Future<void> _toggleRecord() async {
-    final messenger = ScaffoldMessenger.of(context);
     if (_recording) {
       final path = await _recorder.stop();
       setState(() => _recording = false);
@@ -60,13 +60,13 @@ class _AudioSectionState extends ConsumerState<AudioSection> {
         );
         widget.onChanged();
       } catch (_) {
-        messenger.showSnackBar(const SnackBar(content: Text('语音上传失败')));
+        context.showAppSnackBar('语音上传失败', type: AppSnackBarType.error);
       } finally {
         if (mounted) setState(() => _uploading = false);
       }
     } else {
       if (!await _recorder.hasPermission()) {
-        messenger.showSnackBar(const SnackBar(content: Text('未获得麦克风权限')));
+        context.showAppSnackBar('未获得麦克风权限', type: AppSnackBarType.error);
         return;
       }
       final dir = await getTemporaryDirectory();

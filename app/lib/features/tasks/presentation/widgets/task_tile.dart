@@ -27,8 +27,15 @@ class TaskTile extends ConsumerWidget {
       ),
       onDismissed: (_) =>
           ref.read(tasksControllerProvider.notifier).remove(task),
-      child: Material(
-        color: theme.colorScheme.surfaceContainerHighest,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: ListTile(
           onTap: onTap,
@@ -56,15 +63,24 @@ class TaskTile extends ConsumerWidget {
                 )
               : null,
           trailing: IconButton(
-            icon: Icon(
-              task.important ? Icons.star : Icons.star_border,
-              color: task.important ? Colors.amber : theme.disabledColor,
+            icon: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: animation,
+                child: child,
+              ),
+              child: Icon(
+                task.important ? Icons.star : Icons.star_border,
+                key: ValueKey(task.important),
+                color: task.important ? Colors.amber : theme.disabledColor,
+              ),
             ),
             tooltip: '标记重要',
             onPressed: () =>
                 ref.read(tasksControllerProvider.notifier).toggleImportant(task),
           ),
         ),
+      ),
       ),
     );
   }

@@ -10,6 +10,8 @@ import 'package:todo_app/features/tasks/data/models/task.dart';
 import 'package:todo_app/features/tasks/data/task_repository.dart';
 import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/audio_section.dart';
+import 'package:todo_app/shared/widgets/app_back_button.dart';
+import 'package:todo_app/shared/widgets/app_snackbar.dart';
 
 class TaskDetailScreen extends ConsumerStatefulWidget {
   const TaskDetailScreen({super.key, required this.taskId});
@@ -51,7 +53,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   Future<void> _save(Task task) async {
     if (_saving) return;
     setState(() => _saving = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       await _repo.updateTask(
         task.id,
@@ -60,9 +61,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       );
       setState(() => _dirty = false);
       _refresh();
-      messenger.showSnackBar(const SnackBar(content: Text('已保存')));
+      context.showAppSnackBar('已保存', type: AppSnackBarType.success);
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('保存失败')));
+      context.showAppSnackBar('保存失败', type: AppSnackBarType.error);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -113,11 +114,18 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           onPopInvokedWithResult: (didPop, result) async {
             if (didPop) return;
             if (await _onWillPop(task) && context.mounted) {
-              context.pop();
+              safeGoBack(context);
             }
           },
           child: Scaffold(
             appBar: AppBar(
+              leading: AppBackButton(
+                onPressed: () async {
+                  if (await _onWillPop(task) && context.mounted) {
+                    safeGoBack(context);
+                  }
+                },
+              ),
               title: const Text('任务详情'),
               actions: [
                 if (_dirty)
@@ -166,18 +174,29 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               ],
             ),
             body: _buildBody(task),
-            bottomNavigationBar: _dirty
-                ? SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                      child: FilledButton.icon(
-                        onPressed: _saving ? null : () => _save(task),
-                        icon: const Icon(Icons.save_outlined),
-                        label: Text(_saving ? '保存中…' : '保存修改'),
+            bottomNavigationBar: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) => SizeTransition(
+                sizeFactor: animation,
+                axisAlignment: -1,
+                child: FadeTransition(opacity: animation, child: child),
+              ),
+              child: _dirty
+                  ? SafeArea(
+                      key: const ValueKey('save-bar'),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                        child: FilledButton.icon(
+                          onPressed: _saving ? null : () => _save(task),
+                          icon: const Icon(Icons.save_outlined),
+                          label: Text(_saving ? '保存中…' : '保存修改'),
+                        ),
                       ),
-                    ),
-                  )
-                : null,
+                    )
+                  : const SizedBox.shrink(key: ValueKey('no-save-bar')),
+            ),
           ),
         );
       },
@@ -185,7 +204,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         body: Center(child: CircularProgressIndicator()),
       ),
       error: (e, _) => Scaffold(
-        appBar: AppBar(),
+        appBar: secondaryAppBar(context, title: '任务详情'),
         body: Center(child: Text('加载失败：$e')),
       ),
     );
@@ -325,7 +344,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   }
 
   Future<void> _pickImage(Task task, ImageSource source) async {
-    final messenger = ScaffoldMessenger.of(context);
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: source, maxWidth: 2000);
     if (picked == null) return;
@@ -338,7 +356,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       );
       _refresh();
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('图片上传失败')));
+      context.showAppSnackBar('图片上传失败', type: AppSnackBarType.error);
     } finally {
       if (mounted) setState(() => _uploadingImage = false);
     }

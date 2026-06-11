@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/features/auth/data/auth_repository.dart';
 import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
+import 'package:todo_app/shared/widgets/app_back_button.dart';
+import 'package:todo_app/shared/widgets/app_snackbar.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -30,13 +32,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           await ref.read(authRepositoryProvider).uploadAvatar(picked);
       ref.read(authControllerProvider.notifier).setUser(updated);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('头像已更新')));
+        context.showAppSnackBar('头像已更新', type: AppSnackBarType.success);
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('头像上传失败')));
+        context.showAppSnackBar('头像上传失败', type: AppSnackBarType.error);
       }
     } finally {
       if (mounted) setState(() => _uploading = false);
@@ -48,7 +48,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final user = ref.watch(authControllerProvider).user;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: secondaryAppBar(context, title: '设置'),
       body: ListView(
         children: [
           const SizedBox(height: 16),

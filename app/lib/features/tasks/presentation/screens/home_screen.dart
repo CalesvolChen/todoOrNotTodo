@@ -10,7 +10,9 @@ import 'package:todo_app/features/lists/presentation/widgets/list_members_bar.da
 import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/task_tile.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/tasks_grouped_list.dart';
+import 'package:todo_app/shared/widgets/animated_fab.dart';
 import 'package:todo_app/shared/widgets/empty_placeholder.dart';
+import 'package:todo_app/shared/widgets/fade_slide_in.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -41,7 +43,7 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       drawer: const _AppDrawer(),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: AnimatedFab(
         onPressed: () => _showAddSheet(context, ref),
         child: const Icon(Icons.add),
       ),
@@ -76,9 +78,12 @@ class HomeScreen extends ConsumerWidget {
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final task = tasks[index];
-                    return TaskTile(
-                      task: task,
-                      onTap: () => context.go('/task/${task.id}'),
+                    return FadeSlideIn(
+                      index: index,
+                      child: TaskTile(
+                        task: task,
+                        onTap: () => context.push('/task/${task.id}'),
+                      ),
                     );
                   },
                 );
@@ -97,35 +102,40 @@ class HomeScreen extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: const InputDecoration(hintText: '添加任务'),
-                onSubmitted: (v) {
-                  ref.read(tasksControllerProvider.notifier).add(v);
+      showDragHandle: true,
+      builder: (ctx) => FadeSlideIn(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 8,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: const InputDecoration(hintText: '添加任务'),
+                  onSubmitted: (v) {
+                    ref.read(tasksControllerProvider.notifier).add(v);
+                    Navigator.pop(ctx);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                icon: const Icon(Icons.send),
+                onPressed: () {
+                  ref
+                      .read(tasksControllerProvider.notifier)
+                      .add(controller.text);
                   Navigator.pop(ctx);
                 },
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              icon: const Icon(Icons.send),
-              onPressed: () {
-                ref.read(tasksControllerProvider.notifier).add(controller.text);
-                Navigator.pop(ctx);
-              },
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -145,81 +155,99 @@ class _AppDrawer extends ConsumerWidget {
       child: SafeArea(
         child: Column(
           children: [
-            UserAccountsDrawerHeader(
-              accountName: Text(user?.displayName ?? '用户'),
-              accountEmail: Text(user?.username ?? user?.email ?? ''),
-              currentAccountPicture: CircleAvatar(
-                backgroundImage: (user?.avatar != null)
-                    ? NetworkImage(fileUrl(user!.avatar))
-                    : null,
-                child: user?.avatar == null
-                    ? Text(
-                        user?.displayName.characters.first.toUpperCase() ?? '?',
-                      )
-                    : null,
+            FadeSlideIn(
+              index: 0,
+              child: UserAccountsDrawerHeader(
+                accountName: Text(user?.displayName ?? '用户'),
+                accountEmail: Text(user?.username ?? user?.email ?? ''),
+                currentAccountPicture: CircleAvatar(
+                  backgroundImage: (user?.avatar != null)
+                      ? NetworkImage(fileUrl(user!.avatar))
+                      : null,
+                  child: user?.avatar == null
+                      ? Text(
+                          user?.displayName.characters.first.toUpperCase() ??
+                              '?',
+                        )
+                      : null,
+                ),
+                onDetailsPressed: () {
+                  Navigator.pop(context);
+                  context.go('/settings');
+                },
               ),
-              onDetailsPressed: () {
-                Navigator.pop(context);
-                context.go('/settings');
-              },
             ),
-            ListTile(
-              leading: const Icon(Icons.all_inbox_outlined),
-              title: const Text('全部任务'),
-              selected: selectedId == null,
-              onTap: () {
-                ref.read(selectedListIdProvider.notifier).state = null;
-                Navigator.pop(context);
-              },
+            FadeSlideIn(
+              index: 1,
+              child: ListTile(
+                leading: const Icon(Icons.all_inbox_outlined),
+                title: const Text('全部任务'),
+                selected: selectedId == null,
+                onTap: () {
+                  ref.read(selectedListIdProvider.notifier).state = null;
+                  Navigator.pop(context);
+                },
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.mail_outline),
-              title: const Text('协作邀请'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/invitations');
-              },
+            FadeSlideIn(
+              index: 2,
+              child: ListTile(
+                leading: const Icon(Icons.mail_outline),
+                title: const Text('协作邀请'),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.go('/invitations');
+                },
+              ),
             ),
             const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('我的分组', style: Theme.of(context).textTheme.labelMedium),
-                  IconButton(
-                    icon: const Icon(Icons.add, size: 20),
-                    tooltip: '新建分组',
-                    onPressed: () => _showCreateDialog(context, ref),
-                  ),
-                ],
+            FadeSlideIn(
+              index: 3,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '我的分组',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add, size: 20),
+                      tooltip: '新建分组',
+                      onPressed: () => _showCreateDialog(context, ref),
+                    ),
+                  ],
+                ),
               ),
             ),
             Expanded(
               child: listsAsync.when(
                 data: (lists) => ListView(
                   padding: EdgeInsets.zero,
-                  children: lists
-                      .map(
-                        (list) => ListTile(
+                  children: [
+                    for (var i = 0; i < lists.length; i++)
+                      FadeSlideIn(
+                        index: 4 + i,
+                        child: ListTile(
                           leading: Icon(
-                            list.isShared
+                            lists[i].isShared
                                 ? Icons.group_outlined
                                 : Icons.list_alt_outlined,
                           ),
-                          title: Text(list.name),
-                          subtitle: list.isShared
-                              ? Text('${list.memberCount + 1} 人协作')
+                          title: Text(lists[i].name),
+                          subtitle: lists[i].isShared
+                              ? Text('${lists[i].memberCount + 1} 人协作')
                               : null,
-                          selected: selectedId == list.id,
+                          selected: selectedId == lists[i].id,
                           onTap: () {
                             ref.read(selectedListIdProvider.notifier).state =
-                                list.id;
+                                lists[i].id;
                             Navigator.pop(context);
                           },
                           trailing: PopupMenuButton<String>(
                             onSelected: (action) =>
-                                _onListAction(context, ref, list, action),
+                                _onListAction(context, ref, lists[i], action),
                             itemBuilder: (_) => [
                               const PopupMenuItem(
                                 value: 'rename',
@@ -236,8 +264,8 @@ class _AppDrawer extends ConsumerWidget {
                             ],
                           ),
                         ),
-                      )
-                      .toList(),
+                      ),
+                  ],
                 ),
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
@@ -245,13 +273,16 @@ class _AppDrawer extends ConsumerWidget {
               ),
             ),
             const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: const Text('设置'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/settings');
-              },
+            FadeSlideIn(
+              index: 20,
+              child: ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('设置'),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.go('/settings');
+                },
+              ),
             ),
           ],
         ),

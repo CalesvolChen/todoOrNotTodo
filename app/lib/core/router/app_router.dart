@@ -8,6 +8,7 @@ import 'package:todo_app/features/auth/presentation/view_models/auth_controller.
 import 'package:todo_app/features/lists/presentation/screens/members_screen.dart';
 import 'package:todo_app/features/invitations/presentation/screens/invitations_screen.dart';
 import 'package:todo_app/features/settings/presentation/screens/settings_screen.dart';
+import 'package:todo_app/core/router/page_transitions.dart';
 import 'package:todo_app/features/tasks/presentation/screens/home_screen.dart';
 import 'package:todo_app/features/tasks/presentation/screens/task_detail_screen.dart';
 
@@ -56,29 +57,44 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/',
+        pageBuilder: (context, state) =>
+            fadePage(key: state.pageKey, child: const HomeScreen()),
+      ),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (context, state) =>
+            fadePage(key: state.pageKey, child: const LoginScreen()),
+      ),
       GoRoute(
         path: '/register',
-        builder: (context, state) => const RegisterScreen(),
+        pageBuilder: (context, state) =>
+            slidePage(key: state.pageKey, child: const RegisterScreen()),
       ),
       GoRoute(
         path: '/settings',
-        builder: (context, state) => const SettingsScreen(),
+        pageBuilder: (context, state) =>
+            slidePage(key: state.pageKey, child: const SettingsScreen()),
       ),
       GoRoute(
         path: '/invitations',
-        builder: (context, state) => const InvitationsScreen(),
+        pageBuilder: (context, state) =>
+            slidePage(key: state.pageKey, child: const InvitationsScreen()),
       ),
       GoRoute(
         path: '/task/:id',
-        builder: (context, state) =>
-            TaskDetailScreen(taskId: state.pathParameters['id']!),
+        pageBuilder: (context, state) => slidePage(
+          key: state.pageKey,
+          child: TaskDetailScreen(taskId: state.pathParameters['id']!),
+        ),
       ),
       GoRoute(
         path: '/list/:id/members',
-        builder: (context, state) =>
-            MembersScreen(listId: state.pathParameters['id']!),
+        pageBuilder: (context, state) => slidePage(
+          key: state.pageKey,
+          child: MembersScreen(listId: state.pathParameters['id']!),
+        ),
       ),
     ],
   );

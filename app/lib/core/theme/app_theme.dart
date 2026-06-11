@@ -25,6 +25,11 @@ class AppTheme {
       listTileTheme: const ListTileThemeData(
         contentPadding: EdgeInsets.symmetric(horizontal: 12),
       ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 4,
+      ),
     );
   }
 }

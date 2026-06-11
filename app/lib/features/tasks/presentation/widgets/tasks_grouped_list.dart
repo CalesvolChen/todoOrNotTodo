@@ -75,10 +75,11 @@ class _TasksGroupedListState extends State<TasksGroupedList> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          expanded
-                              ? Icons.expand_more
-                              : Icons.chevron_right,
+                        AnimatedRotation(
+                          turns: expanded ? 0 : -0.25,
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOutCubic,
+                          child: const Icon(Icons.expand_more),
                         ),
                         const SizedBox(width: 4),
                         Expanded(
@@ -95,16 +96,24 @@ class _TasksGroupedListState extends State<TasksGroupedList> {
                     ),
                   ),
                 ),
-                if (expanded)
-                  ...sectionTasks.map(
-                    (task) => Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                      child: TaskTile(
-                        task: task,
-                        onTap: () => context.go('/task/${task.id}'),
-                      ),
-                    ),
-                  ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: expanded
+                      ? Column(
+                          children: sectionTasks.map(
+                            (task) => Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                              child: TaskTile(
+                                task: task,
+                                onTap: () => context.push('/task/${task.id}'),
+                              ),
+                            ),
+                          ).toList(),
+                        )
+                      : const SizedBox(width: double.infinity),
+                ),
               ],
             ),
           ),

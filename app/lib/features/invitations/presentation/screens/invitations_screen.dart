@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:todo_app/features/invitations/presentation/view_models/invitations_controller.dart';
+import 'package:todo_app/shared/widgets/app_back_button.dart';
 import 'package:todo_app/shared/widgets/empty_placeholder.dart';
+import 'package:todo_app/shared/widgets/fade_slide_in.dart';
 
 class InvitationsScreen extends ConsumerWidget {
   const InvitationsScreen({super.key});
@@ -13,7 +15,7 @@ class InvitationsScreen extends ConsumerWidget {
     final notifier = ref.read(invitationsControllerProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('协作邀请')),
+      appBar: secondaryAppBar(context, title: '协作邀请'),
       body: invitationsAsync.when(
         data: (invitations) {
           if (invitations.isEmpty) {
@@ -28,25 +30,28 @@ class InvitationsScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final inv = invitations[index];
-              return Card(
-                child: ListTile(
-                  leading: const Icon(Icons.group_add_outlined),
-                  title: Text(inv.listName),
-                  subtitle: Text('${inv.inviterName} 邀请你加入'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.check, color: Colors.green),
-                        tooltip: '接受',
-                        onPressed: () => notifier.accept(inv.id),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.red),
-                        tooltip: '拒绝',
-                        onPressed: () => notifier.decline(inv.id),
-                      ),
-                    ],
+              return FadeSlideIn(
+                index: index,
+                child: Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.group_add_outlined),
+                    title: Text(inv.listName),
+                    subtitle: Text('${inv.inviterName} 邀请你加入'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.check, color: Colors.green),
+                          tooltip: '接受',
+                          onPressed: () => notifier.accept(inv.id),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          tooltip: '拒绝',
+                          onPressed: () => notifier.decline(inv.id),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
