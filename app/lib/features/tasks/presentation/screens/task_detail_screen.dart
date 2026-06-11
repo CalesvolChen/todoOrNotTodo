@@ -11,82 +11,87 @@ import 'package:todo_app/features/tasks/data/task_repository.dart';
 import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/audio_section.dart';
 
-class TaskDetailScreen extends ConsumerWidget {
+class TaskDetailScreen extends ConsumerStatefulWidget {
   const TaskDetailScreen({super.key, required this.taskId});
 
   final String taskId;
 
-  void _refresh(WidgetRef ref) {
-    ref.invalidate(taskDetailProvider(taskId));
+  @override
+  ConsumerState<TaskDetailScreen> createState() => _TaskDetailScreenState();
+}
+
+class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
+  final _title = TextEditingController();
+  final _note = TextEditingController();
+  final _stepController = TextEditingController();
+  bool _uploadingImage = false;
+  bool _dirty = false;
+  bool _saving = false;
+  String? _loadedTaskId;
+
+  TaskRepository get _repo => ref.read(taskRepositoryProvider);
+
+  void _refresh() {
+    ref.invalidate(taskDetailProvider(widget.taskId));
     ref.invalidate(tasksControllerProvider);
   }
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final taskAsync = ref.watch(taskDetailProvider(taskId));
-    final repo = ref.read(taskRepositoryProvider);
+  void _bindTask(Task task) {
+    if (_loadedTaskId == task.id && _dirty) return;
+    _loadedTaskId = task.id;
+    _title.text = task.title;
+    _note.text = task.note ?? '';
+    _dirty = false;
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('任务详情'),
+  void _markDirty() {
+    if (!_dirty) setState(() => _dirty = true);
+  }
+
+  Future<void> _save(Task task) async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _repo.updateTask(
+        task.id,
+        title: _title.text.trim(),
+        note: _note.text,
+      );
+      setState(() => _dirty = false);
+      _refresh();
+      messenger.showSnackBar(const SnackBar(content: Text('已保存')));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('保存失败')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<bool> _onWillPop(Task task) async {
+    if (!_dirty) return true;
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('未保存的修改'),
+        content: const Text('标题或备注已修改，是否保存？'),
         actions: [
-          taskAsync.maybeWhen(
-            data: (task) => IconButton(
-              icon: Icon(
-                task.important ? Icons.star : Icons.star_border,
-                color: task.important ? Colors.amber : null,
-              ),
-              tooltip: '标记重要',
-              onPressed: () async {
-                await repo.setImportant(task.id, !task.important);
-                _refresh(ref);
-              },
-            ),
-            orElse: () => const SizedBox.shrink(),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('不保存'),
           ),
-          taskAsync.maybeWhen(
-            data: (task) => IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: '删除',
-              onPressed: () async {
-                await repo.deleteTask(task.id);
-                _refresh(ref);
-                if (context.mounted) context.go('/');
-              },
-            ),
-            orElse: () => const SizedBox.shrink(),
+          FilledButton(
+            onPressed: () async {
+              await _save(task);
+              if (ctx.mounted) Navigator.pop(ctx, !_dirty);
+            },
+            child: const Text('保存'),
           ),
         ],
       ),
-      body: taskAsync.when(
-        data: (task) => _TaskDetailBody(
-          task: task,
-          onChanged: () => _refresh(ref),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('加载失败：$e')),
-      ),
     );
+    return leave ?? false;
   }
-}
-
-class _TaskDetailBody extends ConsumerStatefulWidget {
-  const _TaskDetailBody({required this.task, required this.onChanged});
-
-  final Task task;
-  final VoidCallback onChanged;
-
-  @override
-  ConsumerState<_TaskDetailBody> createState() => _TaskDetailBodyState();
-}
-
-class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
-  late final TextEditingController _title =
-      TextEditingController(text: widget.task.title);
-  late final TextEditingController _note =
-      TextEditingController(text: widget.task.note ?? '');
-  final _stepController = TextEditingController();
-  bool _uploadingImage = false;
 
   @override
   void dispose() {
@@ -96,64 +101,97 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
     super.dispose();
   }
 
-  TaskRepository get _repo => ref.read(taskRepositoryProvider);
+  @override
+  Widget build(BuildContext context) {
+    final taskAsync = ref.watch(taskDetailProvider(widget.taskId));
 
-  void _showImageSourceSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('拍照'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.camera);
-              },
+    return taskAsync.when(
+      data: (task) {
+        _bindTask(task);
+        return PopScope(
+          canPop: !_dirty,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            if (await _onWillPop(task) && context.mounted) {
+              context.pop();
+            }
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('任务详情'),
+              actions: [
+                if (_dirty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Center(
+                      child: Text(
+                        '未保存',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                TextButton(
+                  onPressed: _saving || !_dirty ? null : () => _save(task),
+                  child: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('保存'),
+                ),
+                IconButton(
+                  icon: Icon(
+                    task.important ? Icons.star : Icons.star_border,
+                    color: task.important ? Colors.amber : null,
+                  ),
+                  tooltip: '标记重要',
+                  onPressed: () async {
+                    await _repo.setImportant(task.id, !task.important);
+                    _refresh();
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: '删除',
+                  onPressed: () async {
+                    await _repo.deleteTask(task.id);
+                    _refresh();
+                    if (context.mounted) context.go('/');
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('从相册选择'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
+            body: _buildBody(task),
+            bottomNavigationBar: _dirty
+                ? SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                      child: FilledButton.icon(
+                        onPressed: _saving ? null : () => _save(task),
+                        icon: const Icon(Icons.save_outlined),
+                        label: Text(_saving ? '保存中…' : '保存修改'),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+        );
+      },
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text('加载失败：$e')),
       ),
     );
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: source, maxWidth: 2000);
-    if (picked == null) return;
-    setState(() => _uploadingImage = true);
-    try {
-      await _repo.uploadAttachment(
-        widget.task.id,
-        xFile: picked,
-        contentType: guessImageMediaType(picked.mimeType, picked.name),
-      );
-      widget.onChanged();
-    } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('图片上传失败')));
-    } finally {
-      if (mounted) setState(() => _uploadingImage = false);
-    }
-  }
-
-  Future<void> _deleteAttachment(Attachment a) async {
-    await _repo.deleteAttachment(a.id);
-    widget.onChanged();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final task = widget.task;
+  Widget _buildBody(Task task) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -163,7 +201,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
               value: task.completed,
               onChanged: (v) async {
                 await _repo.toggleComplete(task.id, v ?? false);
-                widget.onChanged();
+                _refresh();
               },
             ),
             const Text('已完成'),
@@ -173,10 +211,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
         TextField(
           controller: _title,
           decoration: const InputDecoration(labelText: '标题'),
-          onSubmitted: (v) async {
-            await _repo.updateTask(task.id, title: v.trim());
-            widget.onChanged();
-          },
+          onChanged: (_) => _markDirty(),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -186,28 +221,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
             labelText: '备注',
             alignLabelWithHint: true,
           ),
-          onSubmitted: (v) async {
-            await _repo.updateTask(task.id, note: v);
-            widget.onChanged();
-          },
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            icon: const Icon(Icons.save_outlined, size: 18),
-            label: const Text('保存标题/备注'),
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              await _repo.updateTask(
-                task.id,
-                title: _title.text.trim(),
-                note: _note.text,
-              );
-              widget.onChanged();
-              messenger.showSnackBar(const SnackBar(content: Text('已保存')));
-            },
-          ),
+          onChanged: (_) => _markDirty(),
         ),
         const Divider(height: 32),
         Row(
@@ -217,7 +231,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
             IconButton(
               icon: const Icon(Icons.add_a_photo_outlined),
               tooltip: '添加图片',
-              onPressed: _uploadingImage ? null : _showImageSourceSheet,
+              onPressed: _uploadingImage ? null : () => _showImageSourceSheet(task),
             ),
           ],
         ),
@@ -243,7 +257,7 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
                 .toList(),
           ),
         const Divider(height: 32),
-        AudioSection(task: task, onChanged: widget.onChanged),
+        AudioSection(task: task, onChanged: _refresh),
         const Divider(height: 32),
         Text('步骤', style: Theme.of(context).textTheme.titleMedium),
         ...task.steps.map(
@@ -273,13 +287,66 @@ class _TaskDetailBodyState extends ConsumerState<_TaskDetailBody> {
                 if (t.isEmpty) return;
                 await _repo.addStep(task.id, t);
                 _stepController.clear();
-                widget.onChanged();
+                _refresh();
               },
             ),
           ],
         ),
       ],
     );
+  }
+
+  void _showImageSourceSheet(Task task) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('拍照'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(task, ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('从相册选择'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(task, ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(Task task, ImageSource source) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source, maxWidth: 2000);
+    if (picked == null) return;
+    setState(() => _uploadingImage = true);
+    try {
+      await _repo.uploadAttachment(
+        task.id,
+        xFile: picked,
+        contentType: guessImageMediaType(picked.mimeType, picked.name),
+      );
+      _refresh();
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('图片上传失败')));
+    } finally {
+      if (mounted) setState(() => _uploadingImage = false);
+    }
+  }
+
+  Future<void> _deleteAttachment(Attachment a) async {
+    await _repo.deleteAttachment(a.id);
+    _refresh();
   }
 }
 

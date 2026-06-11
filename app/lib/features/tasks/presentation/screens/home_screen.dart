@@ -6,8 +6,10 @@ import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
 import 'package:todo_app/features/lists/data/models/task_list.dart';
 import 'package:todo_app/features/lists/presentation/view_models/lists_controller.dart';
+import 'package:todo_app/features/lists/presentation/widgets/list_members_bar.dart';
 import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/task_tile.dart';
+import 'package:todo_app/features/tasks/presentation/widgets/tasks_grouped_list.dart';
 import 'package:todo_app/shared/widgets/empty_placeholder.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -19,22 +21,22 @@ class HomeScreen extends ConsumerWidget {
     final selectedId = ref.watch(selectedListIdProvider);
     final listsAsync = ref.watch(listsControllerProvider);
 
+    TaskList? selectedList;
+    if (selectedId != null) {
+      selectedList = listsAsync.maybeWhen(
+        data: (lists) {
+          for (final l in lists) {
+            if (l.id == selectedId) return l;
+          }
+          return null;
+        },
+        orElse: () => null,
+      );
+    }
+
     final title = selectedId == null
         ? '全部任务'
-        : listsAsync.maybeWhen(
-            data: (lists) => lists
-                .firstWhere(
-                  (l) => l.id == selectedId,
-                  orElse: () => TaskList(
-                    id: '',
-                    name: '全部任务',
-                    isDefault: false,
-                    ownerId: '',
-                  ),
-                )
-                .name,
-            orElse: () => '任务',
-          );
+        : (selectedList?.name ?? '任务');
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
@@ -43,29 +45,49 @@ class HomeScreen extends ConsumerWidget {
         onPressed: () => _showAddSheet(context, ref),
         child: const Icon(Icons.add),
       ),
-      body: tasksAsync.when(
-        data: (tasks) {
-          if (tasks.isEmpty) {
-            return const EmptyPlaceholder(
-              icon: Icons.checklist_rtl,
-              message: '暂无任务，点击 + 添加',
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: tasks.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final task = tasks[index];
-              return TaskTile(
-                task: task,
-                onTap: () => context.go('/task/${task.id}'),
-              );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('加载失败：$e')),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (selectedId != null && (selectedList?.isShared ?? false))
+            ListMembersBar(listId: selectedId),
+          Expanded(
+            child: tasksAsync.when(
+              data: (tasks) {
+                if (tasks.isEmpty) {
+                  return const EmptyPlaceholder(
+                    icon: Icons.checklist_rtl,
+                    message: '暂无任务，点击 + 添加',
+                  );
+                }
+                if (selectedId == null) {
+                  return listsAsync.when(
+                    data: (lists) => TasksGroupedList(
+                      tasks: tasks,
+                      lists: lists,
+                    ),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text('加载失败：$e')),
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: tasks.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final task = tasks[index];
+                    return TaskTile(
+                      task: task,
+                      onTap: () => context.go('/task/${task.id}'),
+                    );
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('加载失败：$e')),
+            ),
+          ),
+        ],
       ),
     );
   }
