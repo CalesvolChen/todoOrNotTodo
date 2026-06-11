@@ -41,9 +41,19 @@ class TasksController extends AsyncNotifier<List<Task>> {
   }
 
   Future<void> remove(Task task) async {
-    await _repo.deleteTask(task.id);
-    ref.invalidateSelf();
-    await future;
+    final current = state.valueOrNull;
+    if (current != null) {
+      // Dismissible 要求 onDismissed 后立刻从树中移除，先乐观更新 UI
+      state = AsyncData(
+        current.where((t) => t.id != task.id).toList(),
+      );
+    }
+    try {
+      await _repo.deleteTask(task.id);
+    } catch (_) {
+      ref.invalidateSelf();
+      await future;
+    }
   }
 }
 
