@@ -43,11 +43,16 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   }
 
   void _bindTask(Task task) {
-    if (_loadedTaskId == task.id && _dirty) return;
+    if (_dirty) return;
+    final note = task.note ?? '';
+    if (_loadedTaskId == task.id &&
+        _title.text == task.title &&
+        _note.text == note) {
+      return;
+    }
     _loadedTaskId = task.id;
     _title.text = task.title;
-    _note.text = task.note ?? '';
-    _dirty = false;
+    _note.text = note;
   }
 
   void _markDirty() {

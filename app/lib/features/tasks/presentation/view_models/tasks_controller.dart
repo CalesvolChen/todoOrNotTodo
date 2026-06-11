@@ -97,7 +97,8 @@ class TasksController extends AsyncNotifier<List<Task>> {
 final tasksControllerProvider =
     AsyncNotifierProvider<TasksController, List<Task>>(TasksController.new);
 
-/// 单个任务详情
-final taskDetailProvider = FutureProvider.family<Task, String>((ref, id) {
+/// 单个任务详情（离开页面后自动销毁，避免切换账号后读到旧缓存）
+final taskDetailProvider =
+    FutureProvider.autoDispose.family<Task, String>((ref, id) {
   return ref.watch(taskRepositoryProvider).fetchTask(id);
 });

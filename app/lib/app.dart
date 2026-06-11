@@ -5,6 +5,7 @@ import 'core/router/app_router.dart';
 import 'core/storage/token_storage_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/view_models/auth_controller.dart';
+import 'features/tasks/presentation/view_models/tasks_controller.dart';
 
 class TodoApp extends ConsumerWidget {
   const TodoApp({super.key});
@@ -14,6 +15,13 @@ class TodoApp extends ConsumerWidget {
     ref.listen(sessionExpiredProvider, (prev, next) {
       if (next > (prev ?? 0)) {
         ref.read(authControllerProvider.notifier).logout();
+      }
+    });
+
+    ref.listen(authControllerProvider, (prev, next) {
+      if (prev?.token != next.token) {
+        ref.invalidate(tasksControllerProvider);
+        ref.invalidate(taskDetailProvider);
       }
     });
 
