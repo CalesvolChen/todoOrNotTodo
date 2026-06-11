@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:todo_app/core/errors/app_error_message.dart';
 import 'package:todo_app/core/storage/token_storage_provider.dart';
 import 'package:todo_app/features/auth/data/auth_repository.dart';
 import 'package:todo_app/features/auth/data/models/auth_user.dart';
@@ -102,11 +103,11 @@ class AuthController extends StateNotifier<AuthState> {
         user: result.user,
         initializing: false,
       );
-    } catch (_) {
+    } catch (e) {
       state = state.copyWith(
         loading: false,
         initializing: false,
-        error: '登录失败，请检查昵称或密码',
+        error: messageFromError(e),
       );
     }
   }
@@ -123,11 +124,11 @@ class AuthController extends StateNotifier<AuthState> {
         user: result.user,
         initializing: false,
       );
-    } catch (_) {
+    } catch (e) {
       state = state.copyWith(
         loading: false,
         initializing: false,
-        error: '注册失败，昵称可能已被使用',
+        error: messageFromError(e),
       );
     }
   }

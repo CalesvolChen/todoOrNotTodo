@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import 'package:todo_app/core/audio/completion_sound.dart';
+import 'package:todo_app/core/errors/app_error_message.dart';
 import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/core/network/multipart_util.dart';
 import 'package:todo_app/features/tasks/data/models/attachment.dart';
@@ -15,6 +16,7 @@ import 'package:todo_app/features/tasks/data/task_repository.dart';
 import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/audio_section.dart';
 import 'package:todo_app/shared/widgets/app_back_button.dart';
+import 'package:todo_app/shared/widgets/app_error_dialog.dart';
 import 'package:todo_app/shared/widgets/app_snackbar.dart';
 
 class TaskDetailScreen extends ConsumerStatefulWidget {
@@ -59,23 +61,25 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     if (!_dirty) setState(() => _dirty = true);
   }
 
+  Future<bool> _guard(Future<void> Function() action) =>
+      runWithAppErrorDialog(context, action);
+
   Future<void> _save(Task task) async {
     if (_saving) return;
     setState(() => _saving = true);
-    try {
-      await _repo.updateTask(
-        task.id,
-        title: _title.text.trim(),
-        note: _note.text,
-      );
+    final ok = await _guard(() => _repo.updateTask(
+          task.id,
+          title: _title.text.trim(),
+          note: _note.text,
+        ));
+    if (ok) {
       setState(() => _dirty = false);
       _refresh();
-      context.showAppSnackBar('已保存', type: AppSnackBarType.success);
-    } catch (_) {
-      context.showAppSnackBar('保存失败', type: AppSnackBarType.error);
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        context.showAppSnackBar('已保存', type: AppSnackBarType.success);
+      }
     }
+    if (mounted) setState(() => _saving = false);
   }
 
   Future<bool> _onWillPop(Task task) async {
@@ -167,15 +171,18 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   ),
                   tooltip: '标记重要',
                   onPressed: () async {
-                    await _repo.setImportant(task.id, !task.important);
-                    _refresh();
+                    final ok = await _guard(
+                      () => _repo.setImportant(task.id, !task.important),
+                    );
+                    if (ok) _refresh();
                   },
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline),
                   tooltip: '删除',
                   onPressed: () async {
-                    await _repo.deleteTask(task.id);
+                    final ok = await _guard(() => _repo.deleteTask(task.id));
+                    if (!ok) return;
                     _refresh();
                     if (context.mounted) context.go('/');
                   },
@@ -214,7 +221,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       ),
       error: (e, _) => Scaffold(
         appBar: secondaryAppBar(context, title: '任务详情'),
-        body: Center(child: Text('加载失败：$e')),
+        body: Center(child: Text('加载失败：${messageFromError(e)}')),
       ),
     );
   }
@@ -229,7 +236,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               value: task.completed,
               onChanged: (v) async {
                 final completed = v ?? false;
-                await _repo.toggleComplete(task.id, completed);
+                final ok = await _guard(
+                  () => _repo.toggleComplete(task.id, completed),
+                );
+                if (!ok) return;
                 if (completed) {
                   unawaited(CompletionSound.play());
                 }
@@ -325,12 +335,14 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 (entry) => CheckboxListTile(
                   value: entry.value.completed,
                   onChanged: (v) async {
-                    await _repo.toggleStep(
-                      task.id,
-                      entry.value.id,
-                      v ?? false,
+                    final ok = await _guard(
+                      () => _repo.toggleStep(
+                        task.id,
+                        entry.value.id,
+                        v ?? false,
+                      ),
                     );
-                    _refresh();
+                    if (ok) _refresh();
                   },
                   controlAffinity: ListTileControlAffinity.leading,
                   title: Text('${entry.key + 1}. ${entry.value.title}'),
@@ -338,8 +350,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     icon: const Icon(Icons.delete_outline, size: 20),
                     tooltip: '删除步骤',
                     onPressed: () async {
-                      await _repo.deleteStep(task.id, entry.value.id);
-                      _refresh();
+                      final ok = await _guard(
+                        () => _repo.deleteStep(task.id, entry.value.id),
+                      );
+                      if (ok) _refresh();
                     },
                   ),
                 ),
@@ -357,7 +371,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               onPressed: () async {
                 final t = _stepController.text.trim();
                 if (t.isEmpty) return;
-                await _repo.addStep(task.id, t);
+                final ok = await _guard(() => _repo.addStep(task.id, t));
+                if (!ok) return;
                 _stepController.clear();
                 _refresh();
               },
@@ -401,23 +416,18 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     final picked = await picker.pickImage(source: source, maxWidth: 2000);
     if (picked == null) return;
     setState(() => _uploadingImage = true);
-    try {
-      await _repo.uploadAttachment(
-        task.id,
-        xFile: picked,
-        contentType: guessImageMediaType(picked.mimeType, picked.name),
-      );
-      _refresh();
-    } catch (_) {
-      context.showAppSnackBar('图片上传失败', type: AppSnackBarType.error);
-    } finally {
-      if (mounted) setState(() => _uploadingImage = false);
-    }
+    final ok = await _guard(() => _repo.uploadAttachment(
+          task.id,
+          xFile: picked,
+          contentType: guessImageMediaType(picked.mimeType, picked.name),
+        ));
+    if (ok) _refresh();
+    if (mounted) setState(() => _uploadingImage = false);
   }
 
   Future<void> _deleteAttachment(Attachment a) async {
-    await _repo.deleteAttachment(a.id);
-    _refresh();
+    final ok = await _guard(() => _repo.deleteAttachment(a.id));
+    if (ok) _refresh();
   }
 
   String _formatDateTime(DateTime? dt) {

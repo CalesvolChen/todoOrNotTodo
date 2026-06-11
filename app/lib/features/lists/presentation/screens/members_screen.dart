@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:todo_app/core/errors/app_error_message.dart';
 import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/features/lists/data/list_repository.dart';
 import 'package:todo_app/features/lists/data/models/group_member.dart';
@@ -8,6 +9,7 @@ import 'package:todo_app/features/lists/presentation/view_models/lists_controlle
 import 'package:todo_app/shared/widgets/animated_fab.dart';
 import 'package:todo_app/shared/widgets/app_back_button.dart';
 import 'package:todo_app/shared/widgets/app_pull_to_refresh.dart';
+import 'package:todo_app/shared/widgets/app_error_dialog.dart';
 import 'package:todo_app/shared/widgets/app_snackbar.dart';
 import 'package:todo_app/shared/widgets/fade_slide_in.dart';
 import 'package:todo_app/shared/widgets/list_refresh.dart';
@@ -43,11 +45,13 @@ class MembersScreen extends ConsumerWidget {
       ),
     );
     if (username == null || username.isEmpty) return;
-    try {
-      await ref.read(listRepositoryProvider).invite(listId, username);
+    final ok = await runWithAppErrorDialog(
+      context,
+      () => ref.read(listRepositoryProvider).invite(listId, username),
+    );
+    if (!ok) return;
+    if (context.mounted) {
       context.showAppSnackBar('邀请已发送', type: AppSnackBarType.success);
-    } catch (_) {
-      context.showAppSnackBar('邀请失败，请检查昵称', type: AppSnackBarType.error);
     }
   }
 
@@ -56,12 +60,11 @@ class MembersScreen extends ConsumerWidget {
     WidgetRef ref,
     GroupMember member,
   ) async {
-    try {
-      await ref.read(listRepositoryProvider).removeMember(listId, member.id);
-      _refresh(ref);
-    } catch (_) {
-      context.showAppSnackBar('移除失败', type: AppSnackBarType.error);
-    }
+    final ok = await runWithAppErrorDialog(
+      context,
+      () => ref.read(listRepositoryProvider).removeMember(listId, member.id),
+    );
+    if (ok) _refresh(ref);
   }
 
   @override
@@ -76,7 +79,7 @@ class MembersScreen extends ConsumerWidget {
         label: const Text('邀请'),
       ),
       body: AppPullToRefresh(
-        onRefresh: () => _refresh(ref),
+        onRefresh: () => runWithAppErrorDialog(context, () => _refresh(ref)),
         child: membersAsync.when(
         data: (data) => ListView(
             physics: kAppListScrollPhysics,
@@ -110,7 +113,7 @@ class MembersScreen extends ConsumerWidget {
           child: const Center(child: CircularProgressIndicator()),
         ),
         error: (e, _) => AppPullToRefresh.scrollableEmpty(
-          child: Center(child: Text('加载失败：$e')),
+          child: Center(child: Text('加载失败：${messageFromError(e)}')),
         ),
       ),
       ),

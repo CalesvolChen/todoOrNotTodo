@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:todo_app/features/tasks/data/models/task.dart';
 import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
+import 'package:todo_app/shared/widgets/app_error_dialog.dart';
 
 class TaskTile extends ConsumerWidget {
   const TaskTile({
@@ -36,8 +37,10 @@ class TaskTile extends ConsumerWidget {
           ),
           leading: Checkbox(
             value: task.completed,
-            onChanged: (_) =>
-                ref.read(tasksControllerProvider.notifier).toggle(task),
+            onChanged: (_) => runWithAppErrorDialog(
+              context,
+              () => ref.read(tasksControllerProvider.notifier).toggle(task),
+            ),
           ),
           title: Text(
             task.title,
@@ -62,8 +65,11 @@ class TaskTile extends ConsumerWidget {
               ),
             ),
             tooltip: '标记重要',
-            onPressed: () =>
-                ref.read(tasksControllerProvider.notifier).toggleImportant(task),
+            onPressed: () => runWithAppErrorDialog(
+              context,
+              () =>
+                  ref.read(tasksControllerProvider.notifier).toggleImportant(task),
+            ),
           ),
         ),
       ),
@@ -83,8 +89,10 @@ class TaskTile extends ConsumerWidget {
         ),
         child: Icon(Icons.delete, color: theme.colorScheme.onErrorContainer),
       ),
-      onDismissed: (_) =>
-          ref.read(tasksControllerProvider.notifier).remove(task),
+      onDismissed: (_) => runWithAppErrorDialog(
+        context,
+        () => ref.read(tasksControllerProvider.notifier).remove(task),
+      ),
       child: tile,
     );
   }

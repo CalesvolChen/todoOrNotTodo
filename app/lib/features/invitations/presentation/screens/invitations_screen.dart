@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:todo_app/core/errors/app_error_message.dart';
 import 'package:todo_app/features/invitations/presentation/view_models/invitations_controller.dart';
+import 'package:todo_app/shared/widgets/app_error_dialog.dart';
 import 'package:todo_app/shared/widgets/app_back_button.dart';
 import 'package:todo_app/shared/widgets/app_pull_to_refresh.dart';
 import 'package:todo_app/shared/widgets/empty_placeholder.dart';
@@ -19,7 +21,10 @@ class InvitationsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: secondaryAppBar(context, title: '协作邀请'),
       body: AppPullToRefresh(
-        onRefresh: () => refreshInvitations(ref),
+        onRefresh: () => runWithAppErrorDialog(
+          context,
+          () => refreshInvitations(ref),
+        ),
         child: invitationsAsync.when(
         data: (invitations) {
           if (invitations.isEmpty) {
@@ -50,12 +55,18 @@ class InvitationsScreen extends ConsumerWidget {
                         IconButton(
                           icon: const Icon(Icons.check, color: Colors.green),
                           tooltip: '接受',
-                          onPressed: () => notifier.accept(inv.id),
+                          onPressed: () => runWithAppErrorDialog(
+                            context,
+                            () => notifier.accept(inv.id),
+                          ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.red),
                           tooltip: '拒绝',
-                          onPressed: () => notifier.decline(inv.id),
+                          onPressed: () => runWithAppErrorDialog(
+                            context,
+                            () => notifier.decline(inv.id),
+                          ),
                         ),
                       ],
                     ),
@@ -69,7 +80,7 @@ class InvitationsScreen extends ConsumerWidget {
           child: const Center(child: CircularProgressIndicator()),
         ),
         error: (e, _) => AppPullToRefresh.scrollableEmpty(
-          child: Center(child: Text('加载失败：$e')),
+          child: Center(child: Text('加载失败：${messageFromError(e)}')),
         ),
       ),
       ),

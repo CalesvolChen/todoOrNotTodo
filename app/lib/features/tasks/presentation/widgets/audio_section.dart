@@ -9,7 +9,7 @@ import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/features/tasks/data/models/attachment.dart';
 import 'package:todo_app/features/tasks/data/models/task.dart';
 import 'package:todo_app/features/tasks/data/task_repository.dart';
-import 'package:todo_app/shared/widgets/app_snackbar.dart';
+import 'package:todo_app/shared/widgets/app_error_dialog.dart';
 
 class AudioSection extends ConsumerStatefulWidget {
   const AudioSection({super.key, required this.task, required this.onChanged});
@@ -52,21 +52,23 @@ class _AudioSectionState extends ConsumerState<AudioSection> {
       setState(() => _recording = false);
       if (path == null) return;
       setState(() => _uploading = true);
-      try {
-        await _repo.uploadAttachment(
-          widget.task.id,
-          filePath: path,
-          contentType: DioMediaType('audio', 'mp4'),
-        );
-        widget.onChanged();
-      } catch (_) {
-        context.showAppSnackBar('语音上传失败', type: AppSnackBarType.error);
-      } finally {
+      final ok = await runWithAppErrorDialog(context, () => _repo.uploadAttachment(
+            widget.task.id,
+            filePath: path,
+            contentType: DioMediaType('audio', 'mp4'),
+          ));
+      if (!ok) {
         if (mounted) setState(() => _uploading = false);
+        return;
       }
+      widget.onChanged();
+      if (mounted) setState(() => _uploading = false);
     } else {
       if (!await _recorder.hasPermission()) {
-        context.showAppSnackBar('未获得麦克风权限', type: AppSnackBarType.error);
+        await showAppErrorDialog(
+          context,
+          message: '未获得麦克风权限',
+        );
         return;
       }
       final dir = await getTemporaryDirectory();
@@ -93,8 +95,11 @@ class _AudioSectionState extends ConsumerState<AudioSection> {
       await _player.stop();
       _playingId = null;
     }
-    await _repo.deleteAttachment(a.id);
-    widget.onChanged();
+    final ok = await runWithAppErrorDialog(
+      context,
+      () => _repo.deleteAttachment(a.id),
+    );
+    if (ok) widget.onChanged();
   }
 
   @override

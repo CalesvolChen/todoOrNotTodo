@@ -7,6 +7,7 @@ import 'package:todo_app/features/tasks/data/models/task.dart';
 import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/completed_tasks_section.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/task_tile.dart';
+import 'package:todo_app/shared/widgets/app_error_dialog.dart';
 import 'package:todo_app/shared/widgets/app_pull_to_refresh.dart';
 
 /// 按分组折叠展示任务（用于「全部任务」视图），支持长按拖拽跨分组移动
@@ -38,7 +39,10 @@ class _TasksGroupedListState extends ConsumerState<TasksGroupedList> {
   void _onDrop(String targetKey, Task task) {
     final listId = _listIdForKey(targetKey);
     if (task.listId == listId) return;
-    ref.read(tasksControllerProvider.notifier).moveToList(task, listId);
+    runWithAppErrorDialog(
+      context,
+      () => ref.read(tasksControllerProvider.notifier).moveToList(task, listId),
+    );
   }
 
   @override

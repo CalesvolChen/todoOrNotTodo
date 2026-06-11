@@ -47,9 +47,10 @@ class TasksController extends AsyncNotifier<List<Task>> {
       if (markingComplete) {
         unawaited(CompletionSound.play());
       }
-    } catch (_) {
+    } catch (e) {
       ref.invalidateSelf();
       await future;
+      rethrow;
     }
   }
 
@@ -71,9 +72,10 @@ class TasksController extends AsyncNotifier<List<Task>> {
     }
     try {
       await _repo.moveTask(task.id, listId: listId);
-    } catch (_) {
+    } catch (e) {
       ref.invalidateSelf();
       await future;
+      rethrow;
     }
   }
 
@@ -87,9 +89,10 @@ class TasksController extends AsyncNotifier<List<Task>> {
     }
     try {
       await _repo.deleteTask(task.id);
-    } catch (_) {
+    } catch (e) {
       ref.invalidateSelf();
       await future;
+      rethrow;
     }
   }
 }

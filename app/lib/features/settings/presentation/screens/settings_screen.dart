@@ -5,8 +5,10 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/features/auth/data/auth_repository.dart';
+import 'package:todo_app/features/auth/data/models/auth_user.dart';
 import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
 import 'package:todo_app/shared/widgets/app_back_button.dart';
+import 'package:todo_app/shared/widgets/app_error_dialog.dart';
 import 'package:todo_app/shared/widgets/app_snackbar.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -27,20 +29,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
     if (picked == null) return;
     setState(() => _uploading = true);
-    try {
-      final updated =
-          await ref.read(authRepositoryProvider).uploadAvatar(picked);
-      ref.read(authControllerProvider.notifier).setUser(updated);
+    AuthUser? updated;
+    final ok = await runWithAppErrorDialog(context, () async {
+      updated = await ref.read(authRepositoryProvider).uploadAvatar(picked);
+    });
+    if (ok && updated != null) {
+      ref.read(authControllerProvider.notifier).setUser(updated!);
       if (mounted) {
         context.showAppSnackBar('头像已更新', type: AppSnackBarType.success);
       }
-    } catch (_) {
-      if (mounted) {
-        context.showAppSnackBar('头像上传失败', type: AppSnackBarType.error);
-      }
-    } finally {
-      if (mounted) setState(() => _uploading = false);
     }
+    if (mounted) setState(() => _uploading = false);
   }
 
   @override

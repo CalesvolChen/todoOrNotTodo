@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:todo_app/core/errors/app_error_message.dart';
 import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
 import 'package:todo_app/features/lists/data/models/task_list.dart';
@@ -11,6 +12,7 @@ import 'package:todo_app/features/tasks/presentation/view_models/tasks_controlle
 import 'package:todo_app/features/tasks/presentation/widgets/tasks_grouped_list.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/tasks_list_body.dart';
 import 'package:todo_app/shared/widgets/animated_fab.dart';
+import 'package:todo_app/shared/widgets/app_error_dialog.dart';
 import 'package:todo_app/shared/widgets/app_pull_to_refresh.dart';
 import 'package:todo_app/shared/widgets/empty_placeholder.dart';
 import 'package:todo_app/shared/widgets/fade_slide_in.dart';
@@ -56,9 +58,12 @@ class HomeScreen extends ConsumerWidget {
             ListMembersBar(listId: selectedId),
           Expanded(
             child: AppPullToRefresh(
-              onRefresh: () => refreshHomeTasks(
-                ref,
-                includeLists: selectedId == null,
+              onRefresh: () => runWithAppErrorDialog(
+                context,
+                () => refreshHomeTasks(
+                  ref,
+                  includeLists: selectedId == null,
+                ),
               ),
               child: tasksAsync.when(
                 data: (tasks) {
@@ -82,7 +87,9 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                       error: (e, _) => AppPullToRefresh.scrollableEmpty(
-                        child: Center(child: Text('加载失败：$e')),
+                        child: Center(
+                          child: Text('加载失败：${messageFromError(e)}'),
+                        ),
                       ),
                     );
                   }
@@ -95,7 +102,9 @@ class HomeScreen extends ConsumerWidget {
                   child: const Center(child: CircularProgressIndicator()),
                 ),
                 error: (e, _) => AppPullToRefresh.scrollableEmpty(
-                  child: Center(child: Text('加载失败：$e')),
+                  child: Center(
+                    child: Text('加载失败：${messageFromError(e)}'),
+                  ),
                 ),
               ),
             ),
@@ -126,20 +135,26 @@ class HomeScreen extends ConsumerWidget {
                   controller: controller,
                   autofocus: true,
                   decoration: const InputDecoration(hintText: '添加任务'),
-                  onSubmitted: (v) {
-                    ref.read(tasksControllerProvider.notifier).add(v);
-                    Navigator.pop(ctx);
+                  onSubmitted: (v) async {
+                    final ok = await runWithAppErrorDialog(
+                      ctx,
+                      () => ref.read(tasksControllerProvider.notifier).add(v),
+                    );
+                    if (ok && ctx.mounted) Navigator.pop(ctx);
                   },
                 ),
               ),
               const SizedBox(width: 8),
               IconButton.filled(
                 icon: const Icon(Icons.send),
-                onPressed: () {
-                  ref
-                      .read(tasksControllerProvider.notifier)
-                      .add(controller.text);
-                  Navigator.pop(ctx);
+                onPressed: () async {
+                  final ok = await runWithAppErrorDialog(
+                    ctx,
+                    () => ref
+                        .read(tasksControllerProvider.notifier)
+                        .add(controller.text),
+                  );
+                  if (ok && ctx.mounted) Navigator.pop(ctx);
                 },
               ),
             ],
@@ -277,7 +292,9 @@ class _AppDrawer extends ConsumerWidget {
                 ),
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('加载失败：$e')),
+                error: (e, _) => Center(
+                  child: Text('加载失败：${messageFromError(e)}'),
+                ),
               ),
             ),
             const Divider(height: 1),
@@ -335,8 +352,11 @@ class _AppDrawer extends ConsumerWidget {
             onPressed: () async {
               final name = controller.text.trim();
               if (name.isEmpty) return;
-              await ref.read(listsControllerProvider.notifier).create(name);
-              if (ctx.mounted) Navigator.pop(ctx);
+              final ok = await runWithAppErrorDialog(
+                ctx,
+                () => ref.read(listsControllerProvider.notifier).create(name),
+              );
+              if (ok && ctx.mounted) Navigator.pop(ctx);
             },
             child: const Text('创建'),
           ),
@@ -365,10 +385,13 @@ class _AppDrawer extends ConsumerWidget {
             onPressed: () async {
               final name = controller.text.trim();
               if (name.isEmpty) return;
-              await ref
-                  .read(listsControllerProvider.notifier)
-                  .rename(list.id, name);
-              if (ctx.mounted) Navigator.pop(ctx);
+              final ok = await runWithAppErrorDialog(
+                ctx,
+                () => ref
+                    .read(listsControllerProvider.notifier)
+                    .rename(list.id, name),
+              );
+              if (ok && ctx.mounted) Navigator.pop(ctx);
             },
             child: const Text('保存'),
           ),
@@ -390,8 +413,11 @@ class _AppDrawer extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () async {
-              await ref.read(listsControllerProvider.notifier).remove(list.id);
-              if (ctx.mounted) Navigator.pop(ctx);
+              final ok = await runWithAppErrorDialog(
+                ctx,
+                () => ref.read(listsControllerProvider.notifier).remove(list.id),
+              );
+              if (ok && ctx.mounted) Navigator.pop(ctx);
             },
             child: const Text('解散'),
           ),

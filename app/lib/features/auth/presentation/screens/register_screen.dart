@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
+import 'package:todo_app/shared/widgets/app_error_dialog.dart';
 import 'package:todo_app/shared/widgets/app_back_button.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -27,8 +28,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authControllerProvider, (prev, next) {
+      if (next.error != null &&
+          prev?.loading == true &&
+          !next.loading &&
+          context.mounted) {
+        showAppErrorDialog(context, message: next.error!);
+      }
+    });
+
     final auth = ref.watch(authControllerProvider);
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: secondaryAppBar(context, title: '注册', fallbackLocation: '/login'),
@@ -59,13 +68,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     decoration:
                         const InputDecoration(labelText: '密码（至少 6 位）'),
                   ),
-                  if (auth.error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      auth.error!,
-                      style: TextStyle(color: theme.colorScheme.error),
-                    ),
-                  ],
                   const SizedBox(height: 24),
                   FilledButton(
                     onPressed: auth.loading
