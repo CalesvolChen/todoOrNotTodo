@@ -39,6 +39,27 @@ class TaskRepository {
     return TaskStep.fromJson(res.data as Map<String, dynamic>);
   }
 
+  Future<TaskStep> toggleStep(
+    String taskId,
+    String stepId,
+    bool completed,
+  ) async {
+    final res = await _dio.patch(
+      '/tasks/$taskId/steps/$stepId',
+      data: {'completed': completed},
+    );
+    return TaskStep.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteStep(String taskId, String stepId) async {
+    await _dio.delete('/tasks/$taskId/steps/$stepId');
+  }
+
+  Future<Task> moveTask(String id, {String? listId}) async {
+    final res = await _dio.patch('/tasks/$id', data: {'listId': listId});
+    return Task.fromJson(res.data as Map<String, dynamic>);
+  }
+
   Future<Task> createTask(String title, {String? listId}) async {
     final res = await _dio.post('/tasks', data: {
       'title': title,

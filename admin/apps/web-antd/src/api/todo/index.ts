@@ -109,6 +109,7 @@ export interface AdminTask {
   important: boolean;
   dueDate?: string;
   createdAt: string;
+  completedAt?: string | null;
   owner?: { id: string; username?: string; name?: string; email?: string };
   list?: { id: string; name: string };
   attachments?: AdminAttachment[];

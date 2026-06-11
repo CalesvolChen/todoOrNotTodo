@@ -93,6 +93,7 @@ model Task {
   title       String
   note        String?
   completed   Boolean      @default(false)
+  completedAt DateTime?
   important   Boolean      @default(false)
   dueDate     DateTime?
   reminderAt  DateTime?

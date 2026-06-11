@@ -43,9 +43,18 @@ const columns = [
   { title: '重要', dataIndex: 'important', key: 'important', width: 80 },
   { title: '图片', key: 'images', width: 160 },
   { title: '语音', key: 'audios', width: 200 },
-  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 180 },
+  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 170 },
+  { title: '完成时间', dataIndex: 'completedAt', key: 'completedAt', width: 170 },
   { title: '操作', key: 'action', width: 160 },
 ];
+
+function formatTime(value?: string | null) {
+  if (!value) return '-';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 async function fetchData() {
   loading.value = true;
@@ -180,6 +189,12 @@ onMounted(fetchData);
         </template>
         <template v-else-if="column.key === 'important'">
           <Tag v-if="record.important" color="gold">重要</Tag>
+        </template>
+        <template v-else-if="column.key === 'createdAt'">
+          {{ formatTime(record.createdAt) }}
+        </template>
+        <template v-else-if="column.key === 'completedAt'">
+          {{ formatTime(record.completedAt) }}
         </template>
         <template v-else-if="column.key === 'images'">
           <Space>

@@ -5,29 +5,21 @@ import 'package:todo_app/features/tasks/data/models/task.dart';
 import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
 
 class TaskTile extends ConsumerWidget {
-  const TaskTile({super.key, required this.task, this.onTap});
+  const TaskTile({
+    super.key,
+    required this.task,
+    this.onTap,
+    this.enableDismiss = true,
+  });
 
   final Task task;
   final VoidCallback? onTap;
+  final bool enableDismiss;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    return Dismissible(
-      key: ValueKey(task.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Icon(Icons.delete, color: theme.colorScheme.onErrorContainer),
-      ),
-      onDismissed: (_) =>
-          ref.read(tasksControllerProvider.notifier).remove(task),
-      child: AnimatedContainer(
+    final tile = AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
@@ -55,13 +47,7 @@ class TaskTile extends ConsumerWidget {
               color: task.completed ? theme.disabledColor : null,
             ),
           ),
-          subtitle: task.note != null
-              ? Text(
-                  task.note!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                )
-              : null,
+          subtitle: _buildSubtitle(theme),
           trailing: IconButton(
             icon: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
@@ -81,7 +67,44 @@ class TaskTile extends ConsumerWidget {
           ),
         ),
       ),
+    );
+
+    if (!enableDismiss) return tile;
+
+    return Dismissible(
+      key: ValueKey(task.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Icon(Icons.delete, color: theme.colorScheme.onErrorContainer),
       ),
+      onDismissed: (_) =>
+          ref.read(tasksControllerProvider.notifier).remove(task),
+      child: tile,
+    );
+  }
+
+  Widget? _buildSubtitle(ThemeData theme) {
+    final parts = <String>[];
+    final stepLabel = task.stepProgressLabel;
+    if (stepLabel != null) parts.add(stepLabel);
+    if (task.note != null && task.note!.isNotEmpty) parts.add(task.note!);
+    if (parts.isEmpty) return null;
+    return Text(
+      parts.join(' · '),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: task.steps.isNotEmpty
+          ? TextStyle(
+              color: theme.colorScheme.primary,
+              fontSize: 12,
+            )
+          : null,
     );
   }
 }

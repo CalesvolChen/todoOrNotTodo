@@ -28,7 +28,7 @@ export class TasksService {
   }
 
   private include = {
-    steps: true,
+    steps: { orderBy: { createdAt: 'asc' } },
     attachments: { orderBy: { createdAt: 'asc' } },
   } satisfies Prisma.TaskInclude;
 
@@ -91,27 +91,31 @@ export class TasksService {
     if (dto.listId) {
       await this.assertListAccess(userId, dto.listId);
     }
+    const data: Prisma.TaskUpdateInput = {
+      title: dto.title,
+      note: dto.note,
+      important: dto.important,
+      ...(dto.listId !== undefined ? { listId: dto.listId || null } : {}),
+      dueDate:
+        dto.dueDate !== undefined
+          ? dto.dueDate
+            ? new Date(dto.dueDate)
+            : null
+          : undefined,
+      reminderAt:
+        dto.reminderAt !== undefined
+          ? dto.reminderAt
+            ? new Date(dto.reminderAt)
+            : null
+          : undefined,
+    };
+    if (dto.completed !== undefined) {
+      data.completed = dto.completed;
+      data.completedAt = dto.completed ? new Date() : null;
+    }
     return this.prisma.task.update({
       where: { id },
-      data: {
-        title: dto.title,
-        note: dto.note,
-        completed: dto.completed,
-        important: dto.important,
-        listId: dto.listId,
-        dueDate:
-          dto.dueDate !== undefined
-            ? dto.dueDate
-              ? new Date(dto.dueDate)
-              : null
-            : undefined,
-        reminderAt:
-          dto.reminderAt !== undefined
-            ? dto.reminderAt
-              ? new Date(dto.reminderAt)
-              : null
-            : undefined,
-      },
+      data,
       include: this.include,
     });
   }
@@ -127,5 +131,36 @@ export class TasksService {
     return this.prisma.taskStep.create({
       data: { title: dto.title, taskId },
     });
+  }
+
+  async toggleStep(
+    userId: string,
+    taskId: string,
+    stepId: string,
+    completed: boolean,
+  ) {
+    await this.findOne(userId, taskId);
+    const step = await this.prisma.taskStep.findFirst({
+      where: { id: stepId, taskId },
+    });
+    if (!step) {
+      throw new NotFoundException('步骤不存在');
+    }
+    return this.prisma.taskStep.update({
+      where: { id: stepId },
+      data: { completed },
+    });
+  }
+
+  async removeStep(userId: string, taskId: string, stepId: string) {
+    await this.findOne(userId, taskId);
+    const step = await this.prisma.taskStep.findFirst({
+      where: { id: stepId, taskId },
+    });
+    if (!step) {
+      throw new NotFoundException('步骤不存在');
+    }
+    await this.prisma.taskStep.delete({ where: { id: stepId } });
+    return { success: true };
   }
 }

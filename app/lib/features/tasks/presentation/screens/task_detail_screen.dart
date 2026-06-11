@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import 'package:todo_app/core/audio/completion_sound.dart';
 import 'package:todo_app/core/network/file_url.dart';
@@ -249,6 +250,16 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           ),
           onChanged: (_) => _markDirty(),
         ),
+        const SizedBox(height: 16),
+        _MetaRow(
+          label: '创建时间',
+          value: _formatDateTime(task.createdAt),
+        ),
+        if (task.completed)
+          _MetaRow(
+            label: '完成时间',
+            value: _formatDateTime(task.completedAt),
+          ),
         const Divider(height: 32),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -285,19 +296,49 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         const Divider(height: 32),
         AudioSection(task: task, onChanged: _refresh),
         const Divider(height: 32),
-        Text('步骤', style: Theme.of(context).textTheme.titleMedium),
-        ...task.steps.map(
-          (s) => ListTile(
-            dense: true,
-            leading: Icon(
-              s.completed
-                  ? Icons.check_circle
-                  : Icons.radio_button_unchecked,
-              size: 20,
-            ),
-            title: Text(s.title),
-          ),
+        Row(
+          children: [
+            Text('步骤', style: Theme.of(context).textTheme.titleMedium),
+            if (task.steps.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Text(
+                task.stepProgressLabel ?? '',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+              ),
+            ],
+          ],
         ),
+        if (task.steps.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text('暂无步骤', style: TextStyle(color: Colors.grey)),
+          )
+        else
+          ...task.steps.asMap().entries.map(
+                (entry) => CheckboxListTile(
+                  value: entry.value.completed,
+                  onChanged: (v) async {
+                    await _repo.toggleStep(
+                      task.id,
+                      entry.value.id,
+                      v ?? false,
+                    );
+                    _refresh();
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: Text('${entry.key + 1}. ${entry.value.title}'),
+                  secondary: IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    tooltip: '删除步骤',
+                    onPressed: () async {
+                      await _repo.deleteStep(task.id, entry.value.id);
+                      _refresh();
+                    },
+                  ),
+                ),
+              ),
         Row(
           children: [
             Expanded(
@@ -372,6 +413,42 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   Future<void> _deleteAttachment(Attachment a) async {
     await _repo.deleteAttachment(a.id);
     _refresh();
+  }
+
+  String _formatDateTime(DateTime? dt) {
+    if (dt == null) return '—';
+    return DateFormat('yyyy-MM-dd HH:mm').format(dt.toLocal());
+  }
+}
+
+class _MetaRow extends StatelessWidget {
+  const _MetaRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 72,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.hintColor,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: theme.textTheme.bodyMedium),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -209,14 +209,18 @@ export class AdminService {
   async updateTask(id: string, dto: UpdateTaskAdminDto) {
     const task = await this.prisma.task.findUnique({ where: { id } });
     if (!task) throw new NotFoundException('任务不存在');
+    const data: Prisma.TaskUpdateInput = {
+      title: dto.title,
+      note: dto.note,
+      important: dto.important,
+    };
+    if (dto.completed !== undefined) {
+      data.completed = dto.completed;
+      data.completedAt = dto.completed ? new Date() : null;
+    }
     return this.prisma.task.update({
       where: { id },
-      data: {
-        title: dto.title,
-        note: dto.note,
-        completed: dto.completed,
-        important: dto.important,
-      },
+      data,
       include: {
         owner: { select: { id: true, username: true, name: true, email: true } },
         list: { select: { id: true, name: true } },

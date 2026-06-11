@@ -26,18 +26,55 @@ class TasksController extends AsyncNotifier<List<Task>> {
 
   Future<void> toggle(Task task) async {
     final markingComplete = !task.completed;
-    await _repo.toggleComplete(task.id, markingComplete);
-    if (markingComplete) {
-      unawaited(CompletionSound.play());
+    final current = state.valueOrNull;
+    if (current != null) {
+      state = AsyncData(
+        current
+            .map(
+              (t) => t.id == task.id
+                  ? t.copyWith(
+                      completed: markingComplete,
+                      completedAt:
+                          markingComplete ? DateTime.now() : null,
+                    )
+                  : t,
+            )
+            .toList(),
+      );
     }
-    ref.invalidateSelf();
-    await future;
+    try {
+      await _repo.toggleComplete(task.id, markingComplete);
+      if (markingComplete) {
+        unawaited(CompletionSound.play());
+      }
+    } catch (_) {
+      ref.invalidateSelf();
+      await future;
+    }
   }
 
   Future<void> toggleImportant(Task task) async {
     await _repo.setImportant(task.id, !task.important);
     ref.invalidateSelf();
     await future;
+  }
+
+  Future<void> moveToList(Task task, String? listId) async {
+    if (task.listId == listId) return;
+    final current = state.valueOrNull;
+    if (current != null) {
+      state = AsyncData(
+        current
+            .map((t) => t.id == task.id ? t.copyWith(listId: listId) : t)
+            .toList(),
+      );
+    }
+    try {
+      await _repo.moveTask(task.id, listId: listId);
+    } catch (_) {
+      ref.invalidateSelf();
+      await future;
+    }
   }
 
   Future<void> remove(Task task) async {

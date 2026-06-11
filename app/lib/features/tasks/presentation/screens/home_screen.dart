@@ -8,8 +8,8 @@ import 'package:todo_app/features/lists/data/models/task_list.dart';
 import 'package:todo_app/features/lists/presentation/view_models/lists_controller.dart';
 import 'package:todo_app/features/lists/presentation/widgets/list_members_bar.dart';
 import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
-import 'package:todo_app/features/tasks/presentation/widgets/task_tile.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/tasks_grouped_list.dart';
+import 'package:todo_app/features/tasks/presentation/widgets/tasks_list_body.dart';
 import 'package:todo_app/shared/widgets/animated_fab.dart';
 import 'package:todo_app/shared/widgets/empty_placeholder.dart';
 import 'package:todo_app/shared/widgets/fade_slide_in.dart';
@@ -72,20 +72,9 @@ class HomeScreen extends ConsumerWidget {
                     error: (e, _) => Center(child: Text('加载失败：$e')),
                   );
                 }
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: tasks.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final task = tasks[index];
-                    return FadeSlideIn(
-                      index: index,
-                      child: TaskTile(
-                        task: task,
-                        onTap: () => context.push('/task/${task.id}'),
-                      ),
-                    );
-                  },
+                return TasksListBody(
+                  tasks: tasks,
+                  onTaskTap: (task) => context.push('/task/${task.id}'),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),

@@ -16,6 +16,7 @@ import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { CreateStepDto } from './dto/create-step.dto';
+import { UpdateStepDto } from './dto/update-step.dto';
 
 @ApiTags('tasks')
 @ApiBearerAuth()
@@ -63,5 +64,24 @@ export class TasksController {
     @Body() dto: CreateStepDto,
   ) {
     return this.tasksService.addStep(userId, id, dto);
+  }
+
+  @Patch(':id/steps/:stepId')
+  toggleStep(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Param('stepId') stepId: string,
+    @Body() dto: UpdateStepDto,
+  ) {
+    return this.tasksService.toggleStep(userId, id, stepId, dto.completed);
+  }
+
+  @Delete(':id/steps/:stepId')
+  removeStep(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Param('stepId') stepId: string,
+  ) {
+    return this.tasksService.removeStep(userId, id, stepId);
   }
 }
