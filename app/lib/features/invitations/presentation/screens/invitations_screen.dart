@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:todo_app/features/invitations/presentation/view_models/invitations_controller.dart';
 import 'package:todo_app/shared/widgets/app_back_button.dart';
+import 'package:todo_app/shared/widgets/app_pull_to_refresh.dart';
 import 'package:todo_app/shared/widgets/empty_placeholder.dart';
 import 'package:todo_app/shared/widgets/fade_slide_in.dart';
+import 'package:todo_app/shared/widgets/list_refresh.dart';
 
 class InvitationsScreen extends ConsumerWidget {
   const InvitationsScreen({super.key});
@@ -16,15 +18,20 @@ class InvitationsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: secondaryAppBar(context, title: '协作邀请'),
-      body: invitationsAsync.when(
+      body: AppPullToRefresh(
+        onRefresh: () => refreshInvitations(ref),
+        child: invitationsAsync.when(
         data: (invitations) {
           if (invitations.isEmpty) {
-            return const EmptyPlaceholder(
-              icon: Icons.mark_email_read_outlined,
-              message: '暂无待处理邀请',
+            return AppPullToRefresh.scrollableEmpty(
+              child: const EmptyPlaceholder(
+                icon: Icons.mark_email_read_outlined,
+                message: '暂无待处理邀请',
+              ),
             );
           }
           return ListView.separated(
+            physics: kAppListScrollPhysics,
             padding: const EdgeInsets.all(16),
             itemCount: invitations.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -58,8 +65,13 @@ class InvitationsScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('加载失败：$e')),
+        loading: () => AppPullToRefresh.scrollableEmpty(
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+        error: (e, _) => AppPullToRefresh.scrollableEmpty(
+          child: Center(child: Text('加载失败：$e')),
+        ),
+      ),
       ),
     );
   }

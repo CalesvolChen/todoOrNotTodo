@@ -7,18 +7,17 @@ import 'package:todo_app/features/lists/data/models/group_member.dart';
 import 'package:todo_app/features/lists/presentation/view_models/lists_controller.dart';
 import 'package:todo_app/shared/widgets/animated_fab.dart';
 import 'package:todo_app/shared/widgets/app_back_button.dart';
+import 'package:todo_app/shared/widgets/app_pull_to_refresh.dart';
 import 'package:todo_app/shared/widgets/app_snackbar.dart';
 import 'package:todo_app/shared/widgets/fade_slide_in.dart';
+import 'package:todo_app/shared/widgets/list_refresh.dart';
 
 class MembersScreen extends ConsumerWidget {
   const MembersScreen({super.key, required this.listId});
 
   final String listId;
 
-  void _refresh(WidgetRef ref) {
-    ref.invalidate(listMembersProvider(listId));
-    ref.invalidate(listsControllerProvider);
-  }
+  Future<void> _refresh(WidgetRef ref) => refreshListMembers(ref, listId);
 
   Future<void> _invite(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController();
@@ -76,10 +75,11 @@ class MembersScreen extends ConsumerWidget {
         icon: const Icon(Icons.person_add_alt),
         label: const Text('邀请'),
       ),
-      body: membersAsync.when(
-        data: (data) => RefreshIndicator(
-          onRefresh: () async => _refresh(ref),
-          child: ListView(
+      body: AppPullToRefresh(
+        onRefresh: () => _refresh(ref),
+        child: membersAsync.when(
+        data: (data) => ListView(
+            physics: kAppListScrollPhysics,
             children: [
               FadeSlideIn(
                 index: 0,
@@ -106,9 +106,13 @@ class MembersScreen extends ConsumerWidget {
                 ),
             ],
           ),
+        loading: () => AppPullToRefresh.scrollableEmpty(
+          child: const Center(child: CircularProgressIndicator()),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('加载失败：$e')),
+        error: (e, _) => AppPullToRefresh.scrollableEmpty(
+          child: Center(child: Text('加载失败：$e')),
+        ),
+      ),
       ),
     );
   }

@@ -11,8 +11,10 @@ import 'package:todo_app/features/tasks/presentation/view_models/tasks_controlle
 import 'package:todo_app/features/tasks/presentation/widgets/tasks_grouped_list.dart';
 import 'package:todo_app/features/tasks/presentation/widgets/tasks_list_body.dart';
 import 'package:todo_app/shared/widgets/animated_fab.dart';
+import 'package:todo_app/shared/widgets/app_pull_to_refresh.dart';
 import 'package:todo_app/shared/widgets/empty_placeholder.dart';
 import 'package:todo_app/shared/widgets/fade_slide_in.dart';
+import 'package:todo_app/shared/widgets/list_refresh.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -53,32 +55,49 @@ class HomeScreen extends ConsumerWidget {
           if (selectedId != null && (selectedList?.isShared ?? false))
             ListMembersBar(listId: selectedId),
           Expanded(
-            child: tasksAsync.when(
-              data: (tasks) {
-                if (tasks.isEmpty) {
-                  return const EmptyPlaceholder(
-                    icon: Icons.checklist_rtl,
-                    message: '暂无任务，点击 + 添加',
+            child: AppPullToRefresh(
+              onRefresh: () => refreshHomeTasks(
+                ref,
+                includeLists: selectedId == null,
+              ),
+              child: tasksAsync.when(
+                data: (tasks) {
+                  if (tasks.isEmpty) {
+                    return AppPullToRefresh.scrollableEmpty(
+                      child: const EmptyPlaceholder(
+                        icon: Icons.checklist_rtl,
+                        message: '暂无任务，点击 + 添加',
+                      ),
+                    );
+                  }
+                  if (selectedId == null) {
+                    return listsAsync.when(
+                      data: (lists) => TasksGroupedList(
+                        tasks: tasks,
+                        lists: lists,
+                      ),
+                      loading: () => AppPullToRefresh.scrollableEmpty(
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+                      error: (e, _) => AppPullToRefresh.scrollableEmpty(
+                        child: Center(child: Text('加载失败：$e')),
+                      ),
+                    );
+                  }
+                  return TasksListBody(
+                    tasks: tasks,
+                    onTaskTap: (task) => context.push('/task/${task.id}'),
                   );
-                }
-                if (selectedId == null) {
-                  return listsAsync.when(
-                    data: (lists) => TasksGroupedList(
-                      tasks: tasks,
-                      lists: lists,
-                    ),
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Center(child: Text('加载失败：$e')),
-                  );
-                }
-                return TasksListBody(
-                  tasks: tasks,
-                  onTaskTap: (task) => context.push('/task/${task.id}'),
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('加载失败：$e')),
+                },
+                loading: () => AppPullToRefresh.scrollableEmpty(
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) => AppPullToRefresh.scrollableEmpty(
+                  child: Center(child: Text('加载失败：$e')),
+                ),
+              ),
             ),
           ),
         ],
