@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String?
+  role         Role       @default(USER)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  lists        TaskList[]
+  tasks        Task[]
+}
+
+model TaskList {
+  id        String   @id @default(cuid())
+  name      String
+  isDefault Boolean  @default(false)
+  sortOrder Int      @default(0)
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId   String
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+model Task {
+  id         String     @id @default(cuid())
+  title      String
+  note       String?
+  completed  Boolean    @default(false)
+  important  Boolean    @default(false)
+  dueDate    DateTime?
+  reminderAt DateTime?
+  sortOrder  Int        @default(0)
+  list       TaskList?  @relation(fields: [listId], references: [id], onDelete: SetNull)
+  listId     String?
+  owner      User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId    String
+  steps      TaskStep[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([ownerId])
+  @@index([listId])
+}
+
+model TaskStep {
+  id        String   @id @default(cuid())
+  title     String
+  completed Boolean  @default(false)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}
