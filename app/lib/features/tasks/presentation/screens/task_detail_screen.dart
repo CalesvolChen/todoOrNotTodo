@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:todo_app/core/audio/completion_sound.dart';
 import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/core/network/multipart_util.dart';
 import 'package:todo_app/features/tasks/data/models/attachment.dart';
@@ -219,7 +222,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             Checkbox(
               value: task.completed,
               onChanged: (v) async {
-                await _repo.toggleComplete(task.id, v ?? false);
+                final completed = v ?? false;
+                await _repo.toggleComplete(task.id, completed);
+                if (completed) {
+                  unawaited(CompletionSound.play());
+                }
                 _refresh();
               },
             ),

@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:todo_app/core/audio/completion_sound.dart';
 import 'package:todo_app/features/lists/presentation/view_models/lists_controller.dart';
 import 'package:todo_app/features/tasks/data/models/task.dart';
 import 'package:todo_app/features/tasks/data/task_repository.dart';
@@ -22,7 +25,11 @@ class TasksController extends AsyncNotifier<List<Task>> {
   }
 
   Future<void> toggle(Task task) async {
-    await _repo.toggleComplete(task.id, !task.completed);
+    final markingComplete = !task.completed;
+    await _repo.toggleComplete(task.id, markingComplete);
+    if (markingComplete) {
+      unawaited(CompletionSound.play());
+    }
     ref.invalidateSelf();
     await future;
   }
