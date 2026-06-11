@@ -20,9 +20,9 @@ export class AccountController {
     const user = await this.usersService.findById(userId);
     return {
       userId: user.id,
-      username: user.email,
-      realName: user.name ?? user.email,
-      avatar: '',
+      username: user.username ?? user.email,
+      realName: user.name ?? user.username ?? user.email,
+      avatar: user.avatar ?? '',
       roles: [user.role.toLowerCase()],
       homePath: '/todo/dashboard',
     };

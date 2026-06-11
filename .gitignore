@@ -28,6 +28,7 @@ server/dist/
 server/node_modules/
 server/.env
 server/prisma/*.db
+server/uploads/
 
 # ===== admin (Vben) =====
 admin/node_modules/

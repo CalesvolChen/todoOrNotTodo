@@ -1,3 +1,5 @@
+import 'package:todo_app/features/tasks/data/models/attachment.dart';
+
 class TaskStep {
   TaskStep({required this.id, required this.title, required this.completed});
 
@@ -20,7 +22,9 @@ class Task {
     required this.completed,
     required this.important,
     this.dueDate,
+    this.listId,
     this.steps = const [],
+    this.attachments = const [],
   });
 
   final String id;
@@ -29,7 +33,14 @@ class Task {
   final bool completed;
   final bool important;
   final DateTime? dueDate;
+  final String? listId;
   final List<TaskStep> steps;
+  final List<Attachment> attachments;
+
+  List<Attachment> get images =>
+      attachments.where((a) => a.kind == AttachmentKind.image).toList();
+  List<Attachment> get audios =>
+      attachments.where((a) => a.kind == AttachmentKind.audio).toList();
 
   factory Task.fromJson(Map<String, dynamic> json) => Task(
         id: json['id'] as String,
@@ -40,8 +51,12 @@ class Task {
         dueDate: json['dueDate'] != null
             ? DateTime.tryParse(json['dueDate'] as String)
             : null,
+        listId: json['listId'] as String?,
         steps: (json['steps'] as List<dynamic>? ?? [])
             .map((e) => TaskStep.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        attachments: (json['attachments'] as List<dynamic>? ?? [])
+            .map((e) => Attachment.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 }

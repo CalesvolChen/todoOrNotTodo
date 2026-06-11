@@ -34,7 +34,38 @@ async function main() {
     });
   }
 
-  console.log('Seed 完成：管理员账号 admin@todo.dev / 密码 admin123');
+  // 普通用户（仅可登录 App，使用昵称登录）
+  const userPasswordHash = await bcrypt.hash('user123', 10);
+  const seedUsers = [
+    { username: 'alice', name: 'Alice' },
+    { username: 'bob', name: 'Bob' },
+  ];
+
+  for (const u of seedUsers) {
+    const user = await prisma.user.upsert({
+      where: { username: u.username },
+      update: {},
+      create: {
+        username: u.username,
+        name: u.name,
+        passwordHash: userPasswordHash,
+        role: Role.USER,
+      },
+    });
+
+    const hasDefault = await prisma.taskList.findFirst({
+      where: { ownerId: user.id, isDefault: true },
+    });
+    if (!hasDefault) {
+      await prisma.taskList.create({
+        data: { name: '我的待办', isDefault: true, ownerId: user.id },
+      });
+    }
+  }
+
+  console.log('Seed 完成：');
+  console.log('  管理员（后台）: admin@todo.dev / admin123');
+  console.log('  普通用户（App）: alice / user123, bob / user123');
 }
 
 main()

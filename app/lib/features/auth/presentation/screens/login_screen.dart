@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
 
@@ -11,12 +12,12 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _email = TextEditingController(text: 'admin@todo.dev');
-  final _password = TextEditingController(text: 'admin123');
+  final _username = TextEditingController(text: 'alice');
+  final _password = TextEditingController(text: 'user123');
 
   @override
   void dispose() {
-    _email.dispose();
+    _username.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -50,9 +51,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
                   TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(labelText: '邮箱'),
+                    controller: _username,
+                    decoration: const InputDecoration(labelText: '昵称'),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -72,7 +72,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: auth.loading
                         ? null
                         : () => ref.read(authControllerProvider.notifier).login(
-                              _email.text.trim(),
+                              _username.text.trim(),
                               _password.text,
                             ),
                     child: Padding(
@@ -86,6 +86,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             )
                           : const Text('登录'),
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed:
+                        auth.loading ? null : () => context.go('/register'),
+                    child: const Text('没有账号？立即注册'),
                   ),
                 ],
               ),

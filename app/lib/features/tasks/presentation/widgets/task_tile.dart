@@ -5,9 +5,10 @@ import 'package:todo_app/features/tasks/data/models/task.dart';
 import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
 
 class TaskTile extends ConsumerWidget {
-  const TaskTile({super.key, required this.task});
+  const TaskTile({super.key, required this.task, this.onTap});
 
   final Task task;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,6 +31,7 @@ class TaskTile extends ConsumerWidget {
         color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
         child: ListTile(
+          onTap: onTap,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -53,9 +55,15 @@ class TaskTile extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                 )
               : null,
-          trailing: task.important
-              ? const Icon(Icons.star, color: Colors.amber)
-              : null,
+          trailing: IconButton(
+            icon: Icon(
+              task.important ? Icons.star : Icons.star_border,
+              color: task.important ? Colors.amber : theme.disabledColor,
+            ),
+            tooltip: '标记重要',
+            onPressed: () =>
+                ref.read(tasksControllerProvider.notifier).toggleImportant(task),
+          ),
         ),
       ),
     );

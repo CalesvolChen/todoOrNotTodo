@@ -1,0 +1,61 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:todo_app/features/invitations/presentation/view_models/invitations_controller.dart';
+import 'package:todo_app/shared/widgets/empty_placeholder.dart';
+
+class InvitationsScreen extends ConsumerWidget {
+  const InvitationsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final invitationsAsync = ref.watch(invitationsControllerProvider);
+    final notifier = ref.read(invitationsControllerProvider.notifier);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('协作邀请')),
+      body: invitationsAsync.when(
+        data: (invitations) {
+          if (invitations.isEmpty) {
+            return const EmptyPlaceholder(
+              icon: Icons.mark_email_read_outlined,
+              message: '暂无待处理邀请',
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: invitations.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final inv = invitations[index];
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.group_add_outlined),
+                  title: Text(inv.listName),
+                  subtitle: Text('${inv.inviterName} 邀请你加入'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.check, color: Colors.green),
+                        tooltip: '接受',
+                        onPressed: () => notifier.accept(inv.id),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.red),
+                        tooltip: '拒绝',
+                        onPressed: () => notifier.decline(inv.id),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('加载失败：$e')),
+      ),
+    );
+  }
+}

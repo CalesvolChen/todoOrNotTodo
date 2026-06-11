@@ -14,6 +14,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ListsService } from './lists.service';
 import { CreateListDto } from './dto/create-list.dto';
 import { UpdateListDto } from './dto/update-list.dto';
+import { InviteDto } from './dto/invite.dto';
 
 @ApiTags('lists')
 @ApiBearerAuth()
@@ -49,5 +50,28 @@ export class ListsController {
   @Delete(':id')
   remove(@CurrentUser('id') userId: string, @Param('id') id: string) {
     return this.listsService.remove(userId, id);
+  }
+
+  @Post(':id/invite')
+  invite(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Body() dto: InviteDto,
+  ) {
+    return this.listsService.invite(userId, id, dto.username);
+  }
+
+  @Get(':id/members')
+  members(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    return this.listsService.members(userId, id);
+  }
+
+  @Delete(':id/members/:userId')
+  removeMember(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Param('userId') memberUserId: string,
+  ) {
+    return this.listsService.removeMember(userId, id, memberUserId);
   }
 }

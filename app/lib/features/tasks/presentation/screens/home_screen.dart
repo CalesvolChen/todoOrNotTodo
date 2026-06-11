@@ -1,0 +1,341 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:todo_app/core/network/file_url.dart';
+import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
+import 'package:todo_app/features/lists/data/models/task_list.dart';
+import 'package:todo_app/features/lists/presentation/view_models/lists_controller.dart';
+import 'package:todo_app/features/tasks/presentation/view_models/tasks_controller.dart';
+import 'package:todo_app/features/tasks/presentation/widgets/task_tile.dart';
+import 'package:todo_app/shared/widgets/empty_placeholder.dart';
+
+class HomeScreen extends ConsumerWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tasksAsync = ref.watch(tasksControllerProvider);
+    final selectedId = ref.watch(selectedListIdProvider);
+    final listsAsync = ref.watch(listsControllerProvider);
+
+    final title = selectedId == null
+        ? '全部任务'
+        : listsAsync.maybeWhen(
+            data: (lists) => lists
+                .firstWhere(
+                  (l) => l.id == selectedId,
+                  orElse: () => TaskList(
+                    id: '',
+                    name: '全部任务',
+                    isDefault: false,
+                    ownerId: '',
+                  ),
+                )
+                .name,
+            orElse: () => '任务',
+          );
+
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      drawer: const _AppDrawer(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddSheet(context, ref),
+        child: const Icon(Icons.add),
+      ),
+      body: tasksAsync.when(
+        data: (tasks) {
+          if (tasks.isEmpty) {
+            return const EmptyPlaceholder(
+              icon: Icons.checklist_rtl,
+              message: '暂无任务，点击 + 添加',
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: tasks.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final task = tasks[index];
+              return TaskTile(
+                task: task,
+                onTap: () => context.go('/task/${task.id}'),
+              );
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('加载失败：$e')),
+      ),
+    );
+  }
+
+  void _showAddSheet(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: const InputDecoration(hintText: '添加任务'),
+                onSubmitted: (v) {
+                  ref.read(tasksControllerProvider.notifier).add(v);
+                  Navigator.pop(ctx);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filled(
+              icon: const Icon(Icons.send),
+              onPressed: () {
+                ref.read(tasksControllerProvider.notifier).add(controller.text);
+                Navigator.pop(ctx);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AppDrawer extends ConsumerWidget {
+  const _AppDrawer();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).user;
+    final listsAsync = ref.watch(listsControllerProvider);
+    final selectedId = ref.watch(selectedListIdProvider);
+
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            UserAccountsDrawerHeader(
+              accountName: Text(user?.displayName ?? '用户'),
+              accountEmail: Text(user?.username ?? user?.email ?? ''),
+              currentAccountPicture: CircleAvatar(
+                backgroundImage: (user?.avatar != null)
+                    ? NetworkImage(fileUrl(user!.avatar))
+                    : null,
+                child: user?.avatar == null
+                    ? Text(
+                        user?.displayName.characters.first.toUpperCase() ?? '?',
+                      )
+                    : null,
+              ),
+              onDetailsPressed: () {
+                Navigator.pop(context);
+                context.go('/settings');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.all_inbox_outlined),
+              title: const Text('全部任务'),
+              selected: selectedId == null,
+              onTap: () {
+                ref.read(selectedListIdProvider.notifier).state = null;
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.mail_outline),
+              title: const Text('协作邀请'),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/invitations');
+              },
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('我的分组', style: Theme.of(context).textTheme.labelMedium),
+                  IconButton(
+                    icon: const Icon(Icons.add, size: 20),
+                    tooltip: '新建分组',
+                    onPressed: () => _showCreateDialog(context, ref),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: listsAsync.when(
+                data: (lists) => ListView(
+                  padding: EdgeInsets.zero,
+                  children: lists
+                      .map(
+                        (list) => ListTile(
+                          leading: Icon(
+                            list.isShared
+                                ? Icons.group_outlined
+                                : Icons.list_alt_outlined,
+                          ),
+                          title: Text(list.name),
+                          subtitle: list.isShared
+                              ? Text('${list.memberCount + 1} 人协作')
+                              : null,
+                          selected: selectedId == list.id,
+                          onTap: () {
+                            ref.read(selectedListIdProvider.notifier).state =
+                                list.id;
+                            Navigator.pop(context);
+                          },
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (action) =>
+                                _onListAction(context, ref, list, action),
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(
+                                value: 'rename',
+                                child: Text('重命名'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'invite',
+                                child: Text('邀请协作'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('解散分组'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('加载失败：$e')),
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('设置'),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/settings');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onListAction(
+    BuildContext context,
+    WidgetRef ref,
+    TaskList list,
+    String action,
+  ) {
+    switch (action) {
+      case 'rename':
+        _showRenameDialog(context, ref, list);
+      case 'invite':
+        Navigator.pop(context);
+        context.go('/list/${list.id}/members');
+      case 'delete':
+        _confirmDelete(context, ref, list);
+    }
+  }
+
+  void _showCreateDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('新建分组'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '分组名称'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final name = controller.text.trim();
+              if (name.isEmpty) return;
+              await ref.read(listsControllerProvider.notifier).create(name);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('创建'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRenameDialog(BuildContext context, WidgetRef ref, TaskList list) {
+    final controller = TextEditingController(text: list.name);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('重命名分组'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '分组名称'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final name = controller.text.trim();
+              if (name.isEmpty) return;
+              await ref
+                  .read(listsControllerProvider.notifier)
+                  .rename(list.id, name);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref, TaskList list) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('解散分组'),
+        content: Text('确定解散「${list.name}」？组内任务将一并删除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await ref.read(listsControllerProvider.notifier).remove(list.id);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('解散'),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -12,16 +12,35 @@ enum Role {
   ADMIN
 }
 
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum AttachmentKind {
+  IMAGE
+  AUDIO
+}
+
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
+  id           String   @id @default(cuid())
+  email        String?  @unique
+  username     String?  @unique
   passwordHash String
   name         String?
-  role         Role       @default(USER)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  lists        TaskList[]
-  tasks        Task[]
+  avatar       String?
+  role         Role     @default(USER)
+  storageUsed  Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  lists               TaskList[]
+  tasks               Task[]
+  memberships         GroupMember[]
+  uploads             Attachment[]      @relation("Uploads")
+  sentInvitations     GroupInvitation[] @relation("InviteInviter")
+  receivedInvitations GroupInvitation[] @relation("InviteInvitee")
 }
 
 model TaskList {
@@ -35,25 +54,57 @@ model TaskList {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  members     GroupMember[]
+  invitations GroupInvitation[]
+
   @@index([ownerId])
 }
 
+model GroupMember {
+  id        String   @id @default(cuid())
+  list      TaskList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  listId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([listId, userId])
+  @@index([userId])
+}
+
+model GroupInvitation {
+  id        String       @id @default(cuid())
+  list      TaskList     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  listId    String
+  inviter   User         @relation("InviteInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  inviterId String
+  invitee   User         @relation("InviteInvitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+  inviteeId String
+  status    InviteStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([inviteeId, status])
+  @@index([listId])
+}
+
 model Task {
-  id         String     @id @default(cuid())
-  title      String
-  note       String?
-  completed  Boolean    @default(false)
-  important  Boolean    @default(false)
-  dueDate    DateTime?
-  reminderAt DateTime?
-  sortOrder  Int        @default(0)
-  list       TaskList?  @relation(fields: [listId], references: [id], onDelete: SetNull)
-  listId     String?
-  owner      User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  ownerId    String
-  steps      TaskStep[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id          String       @id @default(cuid())
+  title       String
+  note        String?
+  completed   Boolean      @default(false)
+  important   Boolean      @default(false)
+  dueDate     DateTime?
+  reminderAt  DateTime?
+  sortOrder   Int          @default(0)
+  list        TaskList?    @relation(fields: [listId], references: [id], onDelete: SetNull)
+  listId      String?
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String
+  steps       TaskStep[]
+  attachments Attachment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([ownerId])
   @@index([listId])
@@ -68,4 +119,21 @@ model TaskStep {
   createdAt DateTime @default(now())
 
   @@index([taskId])
+}
+
+model Attachment {
+  id         String         @id @default(cuid())
+  kind       AttachmentKind
+  path       String
+  fileName   String
+  mime       String
+  size       Int
+  task       Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId     String
+  uploader   User           @relation("Uploads", fields: [uploaderId], references: [id], onDelete: Cascade)
+  uploaderId String
+  createdAt  DateTime       @default(now())
+
+  @@index([taskId])
+  @@index([uploaderId])
 }

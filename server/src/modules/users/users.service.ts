@@ -11,8 +11,11 @@ export class UsersService {
       select: {
         id: true,
         email: true,
+        username: true,
         name: true,
+        avatar: true,
         role: true,
+        storageUsed: true,
         createdAt: true,
       },
     });
@@ -20,5 +23,10 @@ export class UsersService {
       throw new NotFoundException('用户不存在');
     }
     return user;
+  }
+
+  async updateAvatar(id: string, avatarUrl: string) {
+    await this.prisma.user.update({ where: { id }, data: { avatar: avatarUrl } });
+    return this.findById(id);
   }
 }

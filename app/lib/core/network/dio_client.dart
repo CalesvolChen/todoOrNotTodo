@@ -1,17 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:todo_app/core/constants/app_constants.dart';
-import 'package:todo_app/core/storage/token_storage.dart';
-
-final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
-  return const FlutterSecureStorage();
-});
-
-final tokenStorageProvider = Provider<TokenStorage>((ref) {
-  return TokenStorage(ref.watch(secureStorageProvider));
-});
+import 'package:todo_app/core/storage/token_storage_provider.dart';
 
 final dioProvider = Provider<Dio>((ref) {
   final tokenStorage = ref.watch(tokenStorageProvider);
@@ -26,10 +17,19 @@ final dioProvider = Provider<Dio>((ref) {
     InterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await tokenStorage.read();
-        if (token != null) {
+        if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);
+      },
+      onError: (error, handler) async {
+        if (error.response?.statusCode == 401) {
+          await tokenStorage.clear();
+          if (!ref.read(authBootstrappingProvider)) {
+            ref.read(sessionExpiredProvider.notifier).state++;
+          }
+        }
+        handler.next(error);
       },
     ),
   );
