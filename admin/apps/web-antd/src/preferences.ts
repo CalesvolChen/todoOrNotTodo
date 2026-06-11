@@ -19,6 +19,10 @@ export const overridesPreferences = defineOverridesPreferences({
   // overrides
   app: {
     name: import.meta.env.VITE_APP_TITLE,
+    // 前端路由模式：菜单由本地静态路由生成，无需后端下发菜单
+    accessMode: 'frontend',
+    // 默认进入 To Do 管理仪表盘
+    defaultHomePath: '/todo/dashboard',
   },
 });
 

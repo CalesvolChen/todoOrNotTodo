@@ -1,12 +1,21 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsOptional, IsString } from 'class-validator';
 
 export class LoginDto {
-  @ApiProperty({ example: 'user@example.com' })
+  @ApiPropertyOptional({ example: 'user@example.com', description: '邮箱' })
+  @IsOptional()
   @IsEmail()
-  email: string;
+  email?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({
+    example: 'user@example.com',
+    description: '用户名（兼容管理后台，传入邮箱即可）',
+  })
+  @IsOptional()
+  @IsString()
+  username?: string;
+
+  @ApiPropertyOptional()
   @IsString()
   password: string;
 }

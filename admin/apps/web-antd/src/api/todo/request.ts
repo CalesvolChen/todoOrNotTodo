@@ -3,7 +3,7 @@
  * 与模板内置的 mock 鉴权解耦：核心登录仍走 Nitro mock，
  * 业务数据（任务/清单/统计）走真实后端，返回原始 JSON。
  */
-import { RequestClient } from '@vben/request';
+import { defaultResponseInterceptor, RequestClient } from '@vben/request';
 import { useAccessStore } from '@vben/stores';
 
 const todoApiURL =
@@ -11,7 +11,7 @@ const todoApiURL =
 
 export const todoRequestClient = new RequestClient({
   baseURL: todoApiURL,
-  responseReturn: 'data',
+  responseReturn: 'body',
 });
 
 todoRequestClient.addRequestInterceptor({
@@ -23,3 +23,12 @@ todoRequestClient.addRequestInterceptor({
     return config;
   },
 });
+
+// 将 AxiosResponse 解包成响应体（NestJS 原始 JSON，无 code/data 包裹）。
+todoRequestClient.addResponseInterceptor(
+  defaultResponseInterceptor({
+    codeField: 'code',
+    dataField: 'data',
+    successCode: 0,
+  }),
+);

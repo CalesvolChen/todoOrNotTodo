@@ -71,7 +71,9 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     },
   });
 
-  // 处理返回的响应数据格式
+  // 后端（NestJS）直接返回原始 JSON，使用 HTTP 状态码表示错误。
+  // 这里仍需注册响应拦截器来按 responseReturn: 'body' 把 AxiosResponse 解包成响应体，
+  // 但不做 code/data 解包（codeField/dataField 在 body 模式下不会被使用）。
   client.addResponseInterceptor(
     defaultResponseInterceptor({
       codeField: 'code',
@@ -107,7 +109,7 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
 }
 
 export const requestClient = createRequestClient(apiURL, {
-  responseReturn: 'data',
+  responseReturn: 'body',
 });
 
 export const baseRequestClient = new RequestClient({ baseURL: apiURL });

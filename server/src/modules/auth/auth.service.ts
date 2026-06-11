@@ -31,8 +31,12 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+    const identifier = dto.email ?? dto.username;
+    if (!identifier) {
+      throw new UnauthorizedException('请提供邮箱或用户名');
+    }
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: identifier },
     });
     if (!user) {
       throw new UnauthorizedException('邮箱或密码错误');
