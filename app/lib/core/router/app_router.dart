@@ -10,6 +10,7 @@ import 'package:todo_app/features/lists/presentation/screens/members_screen.dart
 import 'package:todo_app/features/invitations/presentation/screens/invitations_screen.dart';
 import 'package:todo_app/features/settings/presentation/screens/settings_screen.dart';
 import 'package:todo_app/core/router/page_transitions.dart';
+import 'package:todo_app/features/tasks/presentation/screens/important_tasks_screen.dart';
 import 'package:todo_app/features/tasks/presentation/screens/home_screen.dart';
 import 'package:todo_app/features/tasks/presentation/screens/task_detail_screen.dart';
 
@@ -106,6 +107,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           kind: PageTransitionKind.slide,
           child: const SettingsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/important',
+        pageBuilder: (context, state) => appPage(
+          key: state.pageKey,
+          kind: PageTransitionKind.slide,
+          child: const ImportantTasksScreen(),
         ),
       ),
       GoRoute(

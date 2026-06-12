@@ -16,6 +16,12 @@ export class InvitationsController {
     return this.listsService.myInvitations(userId);
   }
 
+  @Get('pending-count')
+  async pendingCount(@CurrentUser('id') userId: string) {
+    const count = await this.listsService.pendingInvitationCount(userId);
+    return { count };
+  }
+
   @Post(':id/accept')
   accept(@CurrentUser('id') userId: string, @Param('id') id: string) {
     return this.listsService.acceptInvitation(userId, id);

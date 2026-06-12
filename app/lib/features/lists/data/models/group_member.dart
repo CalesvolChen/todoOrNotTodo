@@ -1,3 +1,5 @@
+import 'package:todo_app/features/auth/data/models/auth_user.dart';
+
 class GroupMember {
   GroupMember({
     required this.id,
@@ -12,6 +14,14 @@ class GroupMember {
   final String? avatar;
 
   String get displayName => name ?? username ?? '用户';
+
+  /// 当前登录用户优先使用 auth 中的最新头像与显示名。
+  ({String? avatar, String displayName}) presentationFor(AuthUser? currentUser) {
+    if (currentUser != null && currentUser.id == id) {
+      return (avatar: currentUser.avatar, displayName: currentUser.displayName);
+    }
+    return (avatar: avatar, displayName: displayName);
+  }
 
   factory GroupMember.fromJson(Map<String, dynamic> json) => GroupMember(
         id: json['id'] as String,

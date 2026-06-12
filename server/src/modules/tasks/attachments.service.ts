@@ -11,6 +11,7 @@ import {
   MAX_USER_STORAGE,
   StorageService,
 } from '../uploads/storage.service';
+import { removeUploadIfOrphaned } from '../uploads/upload-cleanup';
 
 @Injectable()
 export class AttachmentsService {
@@ -71,22 +72,27 @@ export class AttachmentsService {
       throw new BadRequestException('存储空间已满（上限 100MB）');
     }
 
-    const attachment = await this.prisma.attachment.create({
-      data: {
-        kind: isImage ? 'IMAGE' : 'AUDIO',
-        path: saved.url,
-        fileName: saved.fileName,
-        mime: saved.mime,
-        size: saved.size,
-        taskId,
-        uploaderId: userId,
-      },
-    });
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { storageUsed: { increment: saved.size } },
-    });
-    return attachment;
+    try {
+      const attachment = await this.prisma.attachment.create({
+        data: {
+          kind: isImage ? 'IMAGE' : 'AUDIO',
+          path: saved.url,
+          fileName: saved.fileName,
+          mime: saved.mime,
+          size: saved.size,
+          taskId,
+          uploaderId: userId,
+        },
+      });
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { storageUsed: { increment: saved.size } },
+      });
+      return attachment;
+    } catch (e) {
+      await removeUploadIfOrphaned(this.prisma, this.storage, saved.url);
+      throw e;
+    }
   }
 
   async remove(userId: string, id: string) {
@@ -109,7 +115,7 @@ export class AttachmentsService {
       where: { path: attachment.path },
     });
     if (refs === 0) {
-      await this.storage.removeFile(attachment.path.replace(/^\/uploads\//, ''));
+      await removeUploadIfOrphaned(this.prisma, this.storage, attachment.path);
     }
     return { success: true };
   }

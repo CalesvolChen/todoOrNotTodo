@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:todo_app/core/errors/app_error_message.dart';
-import 'package:todo_app/core/network/file_url.dart';
+import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
 import 'package:todo_app/features/lists/data/list_repository.dart';
+import 'package:todo_app/shared/widgets/user_avatar.dart';
 import 'package:todo_app/features/lists/data/models/group_member.dart';
 import 'package:todo_app/features/lists/presentation/view_models/lists_controller.dart';
 import 'package:todo_app/shared/widgets/animated_fab.dart';
@@ -70,6 +71,7 @@ class MembersScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final membersAsync = ref.watch(listMembersProvider(listId));
+    final currentUser = ref.watch(authControllerProvider).user;
 
     return Scaffold(
       appBar: secondaryAppBar(context, title: '分组成员'),
@@ -86,7 +88,11 @@ class MembersScreen extends ConsumerWidget {
             children: [
               FadeSlideIn(
                 index: 0,
-                child: _MemberTile(member: data.owner, isOwner: true),
+                child: _MemberTile(
+                  member: data.owner,
+                  presentation: data.owner.presentationFor(currentUser),
+                  isOwner: true,
+                ),
               ),
               const Divider(height: 1),
               if (data.members.isEmpty)
@@ -102,6 +108,7 @@ class MembersScreen extends ConsumerWidget {
                     index: entry.key + 1,
                     child: _MemberTile(
                       member: entry.value,
+                      presentation: entry.value.presentationFor(currentUser),
                       isOwner: false,
                       onRemove: () => _remove(context, ref, entry.value),
                     ),
@@ -124,25 +131,25 @@ class MembersScreen extends ConsumerWidget {
 class _MemberTile extends StatelessWidget {
   const _MemberTile({
     required this.member,
+    required this.presentation,
     required this.isOwner,
     this.onRemove,
   });
 
   final GroupMember member;
+  final ({String? avatar, String displayName}) presentation;
   final bool isOwner;
   final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: CircleAvatar(
-        backgroundImage:
-            member.avatar != null ? NetworkImage(fileUrl(member.avatar)) : null,
-        child: member.avatar == null
-            ? Text(member.displayName.characters.first.toUpperCase())
-            : null,
+      leading: UserAvatar(
+        key: ValueKey(presentation.avatar),
+        avatar: presentation.avatar,
+        name: presentation.displayName,
       ),
-      title: Text(member.displayName),
+      title: Text(presentation.displayName),
       subtitle: Text(member.username ?? ''),
       trailing: isOwner
           ? const Chip(label: Text('拥有者'))

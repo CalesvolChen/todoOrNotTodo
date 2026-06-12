@@ -153,6 +153,13 @@ export class ListsService {
     return { success: true };
   }
 
+  /** 待处理邀请数量（用于角标） */
+  pendingInvitationCount(userId: string) {
+    return this.prisma.groupInvitation.count({
+      where: { inviteeId: userId, status: 'PENDING' },
+    });
+  }
+
   /** 我收到的待处理邀请 */
   myInvitations(userId: string) {
     return this.prisma.groupInvitation.findMany({

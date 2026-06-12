@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
@@ -68,6 +68,27 @@ export class StorageService {
     return this.persist(buffer, mime, ext, originalName);
   }
 
+  /** /uploads/... → 相对路径 2026/06/xxx.jpg */
+  relPathFromUrl(url: string): string {
+    return url.replace(/^\/uploads\//, '');
+  }
+
+  /** 确认文件已落盘且非空 */
+  async assertPersisted(relPath: string): Promise<void> {
+    const abs = join(UPLOADS_ROOT, relPath);
+    try {
+      const stat = await fs.stat(abs);
+      if (!stat.isFile() || stat.size === 0) {
+        throw new InternalServerErrorException('文件保存校验失败');
+      }
+    } catch (e) {
+      if (e instanceof InternalServerErrorException) {
+        throw e;
+      }
+      throw new InternalServerErrorException('文件保存失败');
+    }
+  }
+
   /** 物理删除文件（调用方需自行确认无其他引用） */
   async removeFile(relPath: string): Promise<void> {
     try {
@@ -100,6 +121,7 @@ export class StorageService {
     } catch {
       await fs.writeFile(abs, buffer);
     }
+    await this.assertPersisted(rel);
 
     return {
       path: rel,

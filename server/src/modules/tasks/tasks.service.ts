@@ -32,9 +32,19 @@ export class TasksService {
     attachments: { orderBy: { createdAt: 'asc' } },
   } satisfies Prisma.TaskInclude;
 
-  findAll(userId: string, listId?: string) {
+  findAll(
+    userId: string,
+    listId?: string,
+    important?: boolean,
+    completed?: boolean,
+  ) {
     return this.prisma.task.findMany({
-      where: { ...this.accessWhere(userId), ...(listId ? { listId } : {}) },
+      where: {
+        ...this.accessWhere(userId),
+        ...(listId ? { listId } : {}),
+        ...(important !== undefined ? { important } : {}),
+        ...(completed !== undefined ? { completed } : {}),
+      },
       include: this.include,
       orderBy: [
         { completed: 'asc' },

@@ -16,6 +16,14 @@ class InvitationRepository {
         .toList();
   }
 
+  Future<int> fetchPendingCount() async {
+    final res = await _dio.get('/invitations/pending-count');
+    final data = res.data;
+    if (data is int) return data;
+    if (data is Map) return data['count'] as int? ?? 0;
+    return 0;
+  }
+
   Future<void> accept(String id) async {
     await _dio.post('/invitations/$id/accept');
   }

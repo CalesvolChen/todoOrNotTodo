@@ -11,11 +11,17 @@ class TaskTile extends ConsumerWidget {
     required this.task,
     this.onTap,
     this.enableDismiss = true,
+    this.onToggle,
+    this.onToggleImportant,
+    this.onRemove,
   });
 
   final Task task;
   final VoidCallback? onTap;
   final bool enableDismiss;
+  final Future<void> Function(Task task)? onToggle;
+  final Future<void> Function(Task task)? onToggleImportant;
+  final Future<void> Function(Task task)? onRemove;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,7 +45,7 @@ class TaskTile extends ConsumerWidget {
             value: task.completed,
             onChanged: (_) => runWithAppErrorDialog(
               context,
-              () => ref.read(tasksControllerProvider.notifier).toggle(task),
+              () => (onToggle ?? ref.read(tasksControllerProvider.notifier).toggle)(task),
             ),
           ),
           title: Text(
@@ -67,8 +73,9 @@ class TaskTile extends ConsumerWidget {
             tooltip: '标记重要',
             onPressed: () => runWithAppErrorDialog(
               context,
-              () =>
-                  ref.read(tasksControllerProvider.notifier).toggleImportant(task),
+              () => (onToggleImportant ??
+                      ref.read(tasksControllerProvider.notifier).toggleImportant)
+                  (task),
             ),
           ),
         ),
@@ -91,7 +98,7 @@ class TaskTile extends ConsumerWidget {
       ),
       onDismissed: (_) => runWithAppErrorDialog(
         context,
-        () => ref.read(tasksControllerProvider.notifier).remove(task),
+        () => (onRemove ?? ref.read(tasksControllerProvider.notifier).remove)(task),
       ),
       child: tile,
     );

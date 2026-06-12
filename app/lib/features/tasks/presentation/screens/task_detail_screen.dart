@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 
 import 'package:todo_app/core/audio/completion_sound.dart';
 import 'package:todo_app/core/errors/app_error_message.dart';
-import 'package:todo_app/core/network/file_url.dart';
 import 'package:todo_app/core/network/multipart_util.dart';
 import 'package:todo_app/features/tasks/data/models/attachment.dart';
 import 'package:todo_app/features/tasks/data/models/task.dart';
@@ -17,6 +16,7 @@ import 'package:todo_app/features/tasks/presentation/view_models/tasks_controlle
 import 'package:todo_app/features/tasks/presentation/widgets/audio_section.dart';
 import 'package:todo_app/shared/widgets/app_back_button.dart';
 import 'package:todo_app/shared/widgets/app_error_dialog.dart';
+import 'package:todo_app/shared/widgets/app_network_image.dart';
 import 'package:todo_app/shared/widgets/app_snackbar.dart';
 
 class TaskDetailScreen extends ConsumerStatefulWidget {
@@ -477,20 +477,11 @@ class _AttachmentThumb extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        ClipRRect(
+        AppNetworkImage(
+          path: attachment.path,
+          width: 90,
+          height: 90,
           borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            fileUrl(attachment.path),
-            width: 90,
-            height: 90,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              width: 90,
-              height: 90,
-              color: Colors.grey.shade300,
-              child: const Icon(Icons.broken_image_outlined),
-            ),
-          ),
         ),
         Positioned(
           right: 0,

@@ -10,11 +10,22 @@ import 'package:todo_app/shared/widgets/empty_placeholder.dart';
 import 'package:todo_app/shared/widgets/fade_slide_in.dart';
 import 'package:todo_app/shared/widgets/list_refresh.dart';
 
-class InvitationsScreen extends ConsumerWidget {
+class InvitationsScreen extends ConsumerStatefulWidget {
   const InvitationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InvitationsScreen> createState() => _InvitationsScreenState();
+}
+
+class _InvitationsScreenState extends ConsumerState<InvitationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    syncListPageOnEnter(ref, refreshInvitations);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final invitationsAsync = ref.watch(invitationsControllerProvider);
     final notifier = ref.read(invitationsControllerProvider.notifier);
 

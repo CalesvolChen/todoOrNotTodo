@@ -42,6 +42,13 @@ class AuthRepository {
     return AuthUser.fromJson(res.data as Map<String, dynamic>);
   }
 
+  Future<AuthUser> updateProfile({String? name}) async {
+    final res = await _dio.patch('/users/me', data: {
+      if (name != null) 'name': name,
+    });
+    return AuthUser.fromJson(res.data as Map<String, dynamic>);
+  }
+
   Future<AuthUser> uploadAvatar(XFile file) async {
     final multipart = await buildMultipartFile(
       xFile: file,

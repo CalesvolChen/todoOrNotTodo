@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:todo_app/core/errors/app_error_message.dart';
 import 'package:todo_app/core/storage/token_storage_provider.dart';
 import 'package:todo_app/features/auth/data/auth_repository.dart';
 import 'package:todo_app/features/auth/data/models/auth_user.dart';
+import 'package:todo_app/features/lists/presentation/view_models/lists_controller.dart';
 
 class AuthState {
   const AuthState({
@@ -135,6 +137,25 @@ class AuthController extends StateNotifier<AuthState> {
 
   void setUser(AuthUser user) {
     state = state.copyWith(user: user);
+    _invalidateMemberCaches();
+  }
+
+  Future<void> updateAvatar(XFile file) async {
+    final user = await _ref.read(authRepositoryProvider).uploadAvatar(file);
+    state = state.copyWith(user: user);
+    _invalidateMemberCaches();
+  }
+
+  Future<void> updateDisplayName(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    final user = await _ref.read(authRepositoryProvider).updateProfile(name: trimmed);
+    state = state.copyWith(user: user);
+    _invalidateMemberCaches();
+  }
+
+  void _invalidateMemberCaches() {
+    _ref.invalidate(listMembersProvider);
   }
 
   Future<void> logout() async {

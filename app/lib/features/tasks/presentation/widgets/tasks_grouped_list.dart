@@ -16,10 +16,16 @@ class TasksGroupedList extends ConsumerStatefulWidget {
     super.key,
     required this.tasks,
     required this.lists,
+    this.showCompletedSection = true,
+    this.enableDrag = true,
+    this.taskTileBuilder,
   });
 
   final List<Task> tasks;
   final List<TaskList> lists;
+  final bool showCompletedSection;
+  final bool enableDrag;
+  final Widget Function(Task task, VoidCallback onTap)? taskTileBuilder;
 
   @override
   ConsumerState<TasksGroupedList> createState() => _TasksGroupedListState();
@@ -79,14 +85,19 @@ class _TasksGroupedListState extends ConsumerState<TasksGroupedList> {
               tasks: grouped[orderedKeys[index]]!,
               expanded: _isExpanded(orderedKeys[index]),
               onToggle: () => _toggle(orderedKeys[index]),
-              onDrop: (task) => _onDrop(orderedKeys[index], task),
+              onDrop: widget.enableDrag
+                  ? (task) => _onDrop(orderedKeys[index], task)
+                  : null,
               onTaskTap: (task) => context.push('/task/${task.id}'),
+              enableDrag: widget.enableDrag,
+              taskTileBuilder: widget.taskTileBuilder,
             ),
           ),
-        CompletedTasksSection(
-          tasks: split.completed,
-          onTaskTap: (task) => context.push('/task/${task.id}'),
-        ),
+        if (widget.showCompletedSection)
+          CompletedTasksSection(
+            tasks: split.completed,
+            onTaskTap: (task) => context.push('/task/${task.id}'),
+          ),
       ],
     );
   }
@@ -99,8 +110,10 @@ class _GroupSection extends StatelessWidget {
     required this.tasks,
     required this.expanded,
     required this.onToggle,
-    required this.onDrop,
     required this.onTaskTap,
+    this.onDrop,
+    this.enableDrag = true,
+    this.taskTileBuilder,
   });
 
   final String title;
@@ -108,105 +121,125 @@ class _GroupSection extends StatelessWidget {
   final List<Task> tasks;
   final bool expanded;
   final VoidCallback onToggle;
-  final void Function(Task task) onDrop;
+  final void Function(Task task)? onDrop;
   final void Function(Task task) onTaskTap;
+  final bool enableDrag;
+  final Widget Function(Task task, VoidCallback onTap)? taskTileBuilder;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    if (!enableDrag || onDrop == null) {
+      return _buildSectionContent(context, highlight: false);
+    }
 
     return DragTarget<Task>(
       onWillAcceptWithDetails: (d) =>
           !d.data.completed && d.data.listId != _listIdForKey(sectionKey),
-      onAcceptWithDetails: (d) => onDrop(d.data),
+      onAcceptWithDetails: (d) => onDrop!(d.data),
       builder: (context, candidate, rejected) {
-        final highlight = candidate.isNotEmpty;
-        return Material(
-          color: highlight
-              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.35)
-              : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              InkWell(
-                onTap: onToggle,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    children: [
-                      AnimatedRotation(
-                        turns: expanded ? 0 : -0.25,
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOutCubic,
-                        child: const Icon(Icons.expand_more),
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: theme.textTheme.titleSmall,
-                        ),
-                      ),
-                      if (highlight)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Icon(
-                            Icons.move_to_inbox_outlined,
-                            size: 18,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      Text(
-                        '${tasks.length}',
-                        style: theme.textTheme.labelMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topCenter,
-                child: expanded
-                    ? Column(
-                        children: tasks
-                            .map(
-                              (task) => Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                                child: _DraggableTaskTile(
-                                  task: task,
-                                  onTap: () => onTaskTap(task),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      )
-                    : const SizedBox(width: double.infinity),
-              ),
-            ],
-          ),
-        );
+        return _buildSectionContent(context, highlight: candidate.isNotEmpty);
       },
     );
+  }
+
+  Widget _buildSectionContent(BuildContext context, {required bool highlight}) {
+    final theme = Theme.of(context);
+    return Material(
+      color: highlight
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.35)
+          : theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          InkWell(
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              child: Row(
+                children: [
+                  AnimatedRotation(
+                    turns: expanded ? 0 : -0.25,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    child: const Icon(Icons.expand_more),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleSmall,
+                    ),
+                  ),
+                  if (highlight)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Icon(
+                        Icons.move_to_inbox_outlined,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  Text(
+                    '${tasks.length}',
+                    style: theme.textTheme.labelMedium,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: expanded
+                ? Column(
+                    children: tasks
+                        .map(
+                          (task) => Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                            child: _buildTaskTile(task),
+                          ),
+                        )
+                        .toList(),
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskTile(Task task) {
+    final onTap = () => onTaskTap(task);
+    if (taskTileBuilder != null) {
+      return taskTileBuilder!(task, onTap);
+    }
+    if (!enableDrag) {
+      return TaskTile(task: task, onTap: onTap, enableDismiss: false);
+    }
+    return _DraggableTaskTile(task: task, onTap: onTap);
   }
 
   String? _listIdForKey(String key) => key == '_ungrouped' ? null : key;
 }
 
 class _DraggableTaskTile extends StatelessWidget {
-  const _DraggableTaskTile({required this.task, required this.onTap});
+  const _DraggableTaskTile({
+    required this.task,
+    required this.onTap,
+  });
 
   final Task task;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final child = TaskTile(task: task, onTap: onTap);
+    final ghost = TaskTile(task: task, onTap: null, enableDismiss: false);
     return LongPressDraggable<Task>(
       data: task,
       feedback: Material(
@@ -214,17 +247,11 @@ class _DraggableTaskTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: SizedBox(
           width: MediaQuery.sizeOf(context).width - 56,
-          child: Opacity(
-            opacity: 0.92,
-            child: TaskTile(task: task, onTap: null, enableDismiss: false),
-          ),
+          child: Opacity(opacity: 0.92, child: ghost),
         ),
       ),
-      childWhenDragging: Opacity(
-        opacity: 0.35,
-        child: TaskTile(task: task, onTap: null, enableDismiss: false),
-      ),
-      child: TaskTile(task: task, onTap: onTap),
+      childWhenDragging: Opacity(opacity: 0.35, child: ghost),
+      child: child,
     );
   }
 }

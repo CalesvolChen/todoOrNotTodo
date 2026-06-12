@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:todo_app/features/invitations/data/invitation_repository.dart';
 import 'package:todo_app/features/invitations/data/models/invitation.dart';
+import 'package:todo_app/features/invitations/presentation/view_models/invitations_badge_provider.dart';
 import 'package:todo_app/features/lists/presentation/view_models/lists_controller.dart';
 
 class InvitationsController extends AsyncNotifier<List<Invitation>> {
@@ -13,12 +14,14 @@ class InvitationsController extends AsyncNotifier<List<Invitation>> {
   Future<void> accept(String id) async {
     await _repo.accept(id);
     ref.invalidate(listsControllerProvider);
+    ref.invalidate(pendingInvitationsCountProvider);
     ref.invalidateSelf();
     await future;
   }
 
   Future<void> decline(String id) async {
     await _repo.decline(id);
+    ref.invalidate(pendingInvitationsCountProvider);
     ref.invalidateSelf();
     await future;
   }

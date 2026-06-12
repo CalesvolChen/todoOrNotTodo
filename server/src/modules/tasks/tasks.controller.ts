@@ -16,6 +16,7 @@ import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { CreateStepDto } from './dto/create-step.dto';
+import { TaskQueryDto } from './dto/task-query.dto';
 import { UpdateStepDto } from './dto/update-step.dto';
 
 @ApiTags('tasks')
@@ -26,11 +27,13 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Get()
-  findAll(
-    @CurrentUser('id') userId: string,
-    @Query('listId') listId?: string,
-  ) {
-    return this.tasksService.findAll(userId, listId);
+  findAll(@CurrentUser('id') userId: string, @Query() query: TaskQueryDto) {
+    return this.tasksService.findAll(
+      userId,
+      query.listId,
+      query.important,
+      query.completed,
+    );
   }
 
   @Get(':id')

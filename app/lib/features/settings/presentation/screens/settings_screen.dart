@@ -3,13 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:todo_app/core/network/file_url.dart';
-import 'package:todo_app/features/auth/data/auth_repository.dart';
-import 'package:todo_app/features/auth/data/models/auth_user.dart';
 import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
 import 'package:todo_app/shared/widgets/app_back_button.dart';
 import 'package:todo_app/shared/widgets/app_error_dialog.dart';
 import 'package:todo_app/shared/widgets/app_snackbar.dart';
+import 'package:todo_app/shared/widgets/user_avatar.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -21,6 +19,41 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _uploading = false;
 
+  Future<void> _editDisplayName(String? current) async {
+    final controller = TextEditingController(text: current ?? '');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('修改显示名'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '显示名'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    if (saved != true) return;
+    final name = controller.text.trim();
+    if (name.isEmpty) return;
+    final ok = await runWithAppErrorDialog(
+      context,
+      () => ref.read(authControllerProvider.notifier).updateDisplayName(name),
+    );
+    if (ok && mounted) {
+      context.showAppSnackBar('显示名已更新', type: AppSnackBarType.success);
+    }
+  }
+
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
@@ -29,15 +62,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
     if (picked == null) return;
     setState(() => _uploading = true);
-    AuthUser? updated;
-    final ok = await runWithAppErrorDialog(context, () async {
-      updated = await ref.read(authRepositoryProvider).uploadAvatar(picked);
-    });
-    if (ok && updated != null) {
-      ref.read(authControllerProvider.notifier).setUser(updated!);
-      if (mounted) {
-        context.showAppSnackBar('头像已更新', type: AppSnackBarType.success);
-      }
+    final ok = await runWithAppErrorDialog(
+      context,
+      () => ref.read(authControllerProvider.notifier).updateAvatar(picked),
+    );
+    if (ok && mounted) {
+      context.showAppSnackBar('头像已更新', type: AppSnackBarType.success);
     }
     if (mounted) setState(() => _uploading = false);
   }
@@ -54,18 +84,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Center(
             child: Stack(
               children: [
-                CircleAvatar(
+                UserAvatar(
+                  key: ValueKey(user?.avatar),
+                  avatar: user?.avatar,
+                  name: user?.displayName ?? '用户',
                   radius: 44,
-                  backgroundImage: (user?.avatar != null)
-                      ? NetworkImage(fileUrl(user!.avatar))
-                      : null,
-                  child: user?.avatar == null
-                      ? Text(
-                          user?.displayName.characters.first.toUpperCase() ??
-                              '?',
-                          style: const TextStyle(fontSize: 32),
-                        )
-                      : null,
                 ),
                 Positioned(
                   right: 0,
@@ -109,6 +132,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             leading: const Icon(Icons.badge_outlined),
             title: const Text('显示名'),
             subtitle: Text(user?.displayName ?? '-'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _editDisplayName(user?.name),
           ),
           const Divider(height: 1),
           ListTile(

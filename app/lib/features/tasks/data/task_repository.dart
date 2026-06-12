@@ -11,10 +11,18 @@ class TaskRepository {
 
   final Dio _dio;
 
-  Future<List<Task>> fetchTasks({String? listId}) async {
+  Future<List<Task>> fetchTasks({
+    String? listId,
+    bool? important,
+    bool? completed,
+  }) async {
+    final params = <String, dynamic>{};
+    if (listId != null) params['listId'] = listId;
+    if (important != null) params['important'] = important ? 'true' : 'false';
+    if (completed != null) params['completed'] = completed ? 'true' : 'false';
     final res = await _dio.get(
       '/tasks',
-      queryParameters: listId != null ? {'listId': listId} : null,
+      queryParameters: params.isEmpty ? null : params,
     );
     return (res.data as List<dynamic>)
         .map((e) => Task.fromJson(e as Map<String, dynamic>))
@@ -60,10 +68,15 @@ class TaskRepository {
     return Task.fromJson(res.data as Map<String, dynamic>);
   }
 
-  Future<Task> createTask(String title, {String? listId}) async {
+  Future<Task> createTask(
+    String title, {
+    String? listId,
+    bool important = false,
+  }) async {
     final res = await _dio.post('/tasks', data: {
       'title': title,
       if (listId != null) 'listId': listId,
+      if (important) 'important': true,
     });
     return Task.fromJson(res.data as Map<String, dynamic>);
   }

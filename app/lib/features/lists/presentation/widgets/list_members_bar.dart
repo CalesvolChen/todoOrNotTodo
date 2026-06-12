@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:todo_app/core/network/file_url.dart';
+import 'package:todo_app/features/auth/presentation/view_models/auth_controller.dart';
 import 'package:todo_app/features/lists/data/models/group_member.dart';
 import 'package:todo_app/features/lists/presentation/view_models/lists_controller.dart';
+import 'package:todo_app/shared/widgets/user_avatar.dart';
 
 /// 分组顶部协作者头像条（拥有者 + 成员）
 class ListMembersBar extends ConsumerWidget {
@@ -14,6 +15,7 @@ class ListMembersBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final membersAsync = ref.watch(listMembersProvider(listId));
+    final currentUser = ref.watch(authControllerProvider).user;
 
     return membersAsync.when(
       data: (data) {
@@ -41,7 +43,14 @@ class ListMembersBar extends ConsumerWidget {
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: people.map((m) => _MemberAvatar(member: m)).toList(),
+                      children: people
+                          .map(
+                            (m) => _MemberAvatar(
+                              member: m,
+                              presentation: m.presentationFor(currentUser),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
                 ),
@@ -57,36 +66,34 @@ class ListMembersBar extends ConsumerWidget {
 }
 
 class _MemberAvatar extends StatelessWidget {
-  const _MemberAvatar({required this.member});
+  const _MemberAvatar({
+    required this.member,
+    required this.presentation,
+  });
 
   final GroupMember member;
+  final ({String? avatar, String displayName}) presentation;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Tooltip(
-        message: member.displayName,
+        message: presentation.displayName,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
+            UserAvatar(
+              key: ValueKey(presentation.avatar),
+              avatar: presentation.avatar,
+              name: presentation.displayName,
               radius: 18,
-              backgroundImage: member.avatar != null
-                  ? NetworkImage(fileUrl(member.avatar))
-                  : null,
-              child: member.avatar == null
-                  ? Text(
-                      member.displayName.characters.first.toUpperCase(),
-                      style: const TextStyle(fontSize: 14),
-                    )
-                  : null,
             ),
             const SizedBox(height: 4),
             SizedBox(
               width: 44,
               child: Text(
-                member.displayName,
+                presentation.displayName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
