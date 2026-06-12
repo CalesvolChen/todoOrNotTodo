@@ -36,5 +36,5 @@ export class CreateTaskDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  listId?: string;
+  listId?: string | null;
 }
